@@ -1,0 +1,185 @@
+{
+  "$comment": "Extracted from 10 photos (WhatsApp, 2026-10-14, 1024x576 each) in source/photos-2026-10-14. Confidence: verified = clearly readable AND (for numbers) consistent with the sheet's own formulas; estimated = partly legible or derived, assumption stated; placeholder = needed, not available. Part-number digits other than the two on slide P3 are read at limited resolution and marked estimated.",
+  "version": 2,
+  "source": {
+    "folder": "source/photos-2026-10-14",
+    "photos": {
+      "P1": "6.07.21 PM - Slide: DSV Kanban-Ghostfish (Kanban map + line layout)",
+      "P2": "6.07.36 PM - Slide: DSV Kanban Board",
+      "P3": "6.09.48 PM (1) - Slide: DSV Kanban Visual Management Improvements",
+      "P4": "6.09.48 PM (2) - Slide: DSV Production Point Of Use Cleanup",
+      "P5": "6.09.48 PM - Slide: DSV Kanban Cleanup and Expansion",
+      "P6": "6.09.49 PM - Sheet 'Copy of DSV Mech -- Material Replenishment - August 19, 202x', Kanban tab",
+      "P7-P10": "6.10.59 PM (+1,2,3) - same sheet, BOM / Point-of-Use / Line-Side-Stock tab"
+    }
+  },
+
+  "program": {
+    "customer_program": { "value": "Ghostfish (GF)", "confidence": "verified" },
+    "model_variants": { "value": ["GF Yawn", "GF Bloom"], "confidence": "verified" },
+    "producer": { "value": "Celestica (CLS)", "confidence": "verified" },
+    "material_provider": { "value": "DSV", "confidence": "verified" }
+  },
+
+  "planning_basis": {
+    "$comment": "From the BOM tab header cells. Every hours/days figure in the sheet reproduces from these values, e.g. Base Rack kanban 22 pallets x 1 /96 per day = 0.229 days x 18 h = 4.125 h.",
+    "daily_demand_racks": { "value": 96, "confidence": "verified", "src": "P10 cell F2" },
+    "production_hours_per_day": { "value": 18, "confidence": "verified", "src": "P10 'hours per day 18' (POU and Line Side Stock sections)" },
+    "effective_rate_racks_per_hour": { "value": 5.333, "confidence": "verified", "derivation": "96 / 18" },
+    "slide_stated_rate_racks_per_hour": { "value": 5, "confidence": "verified", "src": "P1", "note": "Slide is an older/rounded basis; sheet uses 5.33/h. Simulator default should be 5 (baseline) with the sheet basis available as a preset." },
+    "kanbans_per_part": { "value": 2, "confidence": "verified", "src": "P1 + P10 '# of kanbans 2'" },
+    "replenishment_lead_time_days": { "value": 0.111, "hours": 2, "confidence": "verified", "src": "P10 column L (0.111 x 18 h = 2 h)" },
+    "safety_stock_days": { "value": 0.111, "hours": 2, "confidence": "verified", "src": "P10 column M" },
+    "max_inventory_rule": { "value": "max pallets = 2 x kanban size; max units = max pallets x qty per pallet", "confidence": "verified" },
+    "pou_rule": { "value": "1 pallet at point of use per part (was 2 before Aug 19 walkthrough)", "confidence": "verified", "src": "P4 + POU columns use 1 pallet" },
+    "pou_pink_highlight": { "value": "POU hours of supply below the 2 h lead time: Base Rack, Battery Shelves, M Shelf, T Shelf", "confidence": "estimated", "assumption": "Meaning of red fill inferred from the values" }
+  },
+
+  "operating_rules": {
+    "kanban_size_range_pallets": { "min": 1, "max": 25, "confidence": "verified", "src": "P1 (sheet max seen: 22)" },
+    "replenishment_trigger": { "value": "1 of 2 kanbans empty", "confidence": "verified", "src": "P1" },
+    "dsv_check_interval_hours": { "min": 1, "max": 2, "confidence": "verified", "src": "P1" },
+    "kanban_to_pou_move_unit": { "value": "one pallet or rack at a time, by material handler", "confidence": "verified", "src": "P1" },
+    "subassembly_pallet_interval_minutes": { "value": 12, "sheet_value": 11.25, "parts": ["M Shelf", "T Shelf"], "confidence": "verified", "src": "P4 says ~12 min; sheet POU = 11.25 min (16 per pallet / 1536 per day x 18 h)" },
+    "small_parts": { "value": "2-bin system (screws, labels, hooks, pins); green rows in sheet", "confidence": "verified", "src": "P4, P10 legend 'small parts'" },
+    "alternates": { "value": "Orange rows = alternate part numbers / second supplier (Amphenol vs Methode)", "confidence": "verified", "src": "P10 legend 'alternates'" },
+    "kanban_board": {
+      "sections": ["Today in 2-hour slots", "Forward calendar by weekday", "Delivered"],
+      "card_rule": "Celestica places cards at end of day for next-day replenishment; DSV delivers and moves card to Delivered; late deliveries logged for RCCA",
+      "system": "Manual board; no system transaction change yet; barcodes planned",
+      "pockets_visible": { "top": 12, "bottom": 7, "confidence": "estimated" },
+      "confidence": "verified", "src": "P2"
+    },
+    "color_code": {
+      "yellow_tab": "Shared Yawn + Bloom (example 1225629)",
+      "green_tab": "Bloom only (example 1230914)",
+      "sheet_top_level": "yellow = 'GF Yawn, GF Bloom'; dark green = 'GF Bloom'; white = 'GF Yawn'",
+      "confidence": "verified", "src": "P3, P6, P10"
+    }
+  },
+
+  "workstations": {
+    "$comment": "From BOM 'workstation' column. WS6 and anything after WS8 not visible in photos.",
+    "items": [
+      { "id": "WS1", "parts": ["Base Rack", "Large Busbar"], "confidence": "verified" },
+      { "id": "WS2", "parts": ["Left/Right Small Busbar", "Left/Right Rails"], "confidence": "verified" },
+      { "id": "WS3", "parts": ["Top Shelves", "DCN Shelf", "Left/Right Cable Manager", "Battery Shelves"], "confidence": "verified" },
+      { "id": "SUBASSY", "parts": ["M Shelf", "Sub-Assembly Busbar", "Warning Label", "Screws"], "note": "Builds M Shelf sub-assembly delivered to WS4", "confidence": "verified" },
+      { "id": "WS4", "parts": ["Battery Water Pan", "Drain Tube", "Adapter Plates", "M Shelf sub-assembly"], "confidence": "verified" },
+      { "id": "WS5", "parts": ["T Shelf"], "confidence": "verified" },
+      { "id": "WS6", "parts": [], "confidence": "placeholder" },
+      { "id": "WS7", "parts": ["Left/Right Bottom Drain Module", "Left/Right Drain Module (shared with WS8)"], "confidence": "verified" },
+      { "id": "WS8", "parts": ["Left/Right Drain Module (shared with WS7)", "Center Rack Cable Manager"], "confidence": "verified" }
+    ],
+    "cycle_times": { "value": null, "confidence": "placeholder" }
+  },
+
+  "kanban_parts": {
+    "$comment": "Pallet-level Kanban parts. qty_per_rack, qty_per_pallet, kanban_pallets, hours_per_kanban verified where they reproduce from the 96/day, 18 h/day basis. Units = pieces. hours_per_kanban = kanban_pallets x qty_per_pallet / (qty_per_rack x 96) x 18.",
+    "fields": ["pn", "description", "models", "workstation", "qty_per_rack", "qty_per_pallet", "kanban_pallets", "hours_per_kanban", "supplier"],
+    "items": [
+      { "pn": "1225629", "pn_conf": "verified", "description": "Base Rack", "models": ["Yawn", "Bloom"], "workstation": "WS1", "qty_per_rack": 1, "qty_per_pallet": 1, "kanban_pallets": 22, "hours_per_kanban": 4.125, "confidence": "verified" },
+      { "pn": "1192055-01", "alt_pn": "1192049-01", "description": "Large Busbar", "models": ["Yawn", "Bloom"], "workstation": "WS1", "qty_per_rack": 2, "qty_per_pallet": 35, "kanban_pallets": 2, "hours_per_kanban": 6.563, "supplier": "Methode (alt: Amphenol)", "confidence": "verified" },
+      { "pn": "1192057", "alt_pn": "1192051", "description": "Left Small Busbar", "models": ["Yawn", "Bloom"], "workstation": "WS2", "qty_per_rack": 1, "qty_per_pallet": 160, "kanban_pallets": 1, "hours_per_kanban": 30.0, "supplier": "Methode (alt: Amphenol)", "confidence": "verified" },
+      { "pn": "1192056", "alt_pn": "1192050", "description": "Right Small Busbar", "models": ["Yawn", "Bloom"], "workstation": "WS2", "qty_per_rack": 1, "qty_per_pallet": 160, "kanban_pallets": 1, "hours_per_kanban": 30.0, "supplier": "Methode (alt: Amphenol)", "confidence": "verified" },
+      { "pn": "1192744", "description": "Right Rails", "models": ["Yawn"], "workstation": "WS2", "qty_per_rack": 2, "qty_per_pallet": 135, "kanban_pallets": 1, "hours_per_kanban": 12.656, "confidence": "verified" },
+      { "pn": "1230914", "pn_conf": "verified", "description": "Right Rails", "models": ["Bloom"], "workstation": "WS2", "qty_per_rack": 2, "qty_per_pallet": 432, "kanban_pallets": 1, "hours_per_kanban": 40.5, "confidence": "verified" },
+      { "pn": "1192746", "description": "Left Rails", "models": ["Yawn"], "workstation": "WS2", "qty_per_rack": 2, "qty_per_pallet": 320, "kanban_pallets": 1, "hours_per_kanban": 30.0, "confidence": "verified" },
+      { "pn": "1230916", "description": "Left Rails", "models": ["Bloom"], "workstation": "WS2", "qty_per_rack": 2, "qty_per_pallet": 324, "kanban_pallets": 1, "hours_per_kanban": 30.375, "confidence": "verified" },
+      { "pn": null, "description": "Unidentified WS2 row (below Left Rails)", "models": [], "workstation": "WS2", "qty_per_rack": 2, "qty_per_pallet": 280, "kanban_pallets": 1, "hours_per_kanban": 26.25, "supplier": "Cadirex / ATCMAX (row alignment uncertain)", "confidence": "estimated" },
+      { "pn": "1207172", "description": "Top Shelves", "models": ["Yawn"], "workstation": "WS3", "qty_per_rack": 2, "qty_per_pallet": 6, "kanban_pallets": 8, "hours_per_kanban": 4.5, "confidence": "verified" },
+      { "pn": "1231937", "description": "Top Shelves", "models": ["Bloom"], "workstation": "WS3", "qty_per_rack": 2, "qty_per_pallet": 6, "kanban_pallets": 8, "hours_per_kanban": 4.5, "confidence": "verified" },
+      { "pn": "1231057", "description": "DCN Shelf", "models": ["Bloom"], "workstation": "WS3", "qty_per_rack": 1, "qty_per_pallet": 33, "kanban_pallets": 1, "hours_per_kanban": 6.188, "confidence": "verified" },
+      { "pn": "1100361-02", "description": "Left Cable Manager", "models": ["Yawn"], "workstation": "WS3", "qty_per_rack": 1, "qty_per_pallet": 270, "kanban_pallets": 1, "hours_per_kanban": 50.625, "confidence": "verified" },
+      { "pn": "1100362-02", "description": "Right Cable Manager", "models": ["Yawn"], "workstation": "WS3", "qty_per_rack": 1, "qty_per_pallet": 270, "kanban_pallets": 1, "hours_per_kanban": 50.625, "confidence": "verified" },
+      { "pn": "1219362-02", "alt_pn": "1166186-03", "description": "Battery Shelves", "models": ["Yawn", "Bloom"], "workstation": "WS3", "qty_per_rack": 4, "qty_per_pallet": 8, "kanban_pallets": 11, "hours_per_kanban": 4.125, "confidence": "verified" },
+      { "pn": "1222851", "description": "M Shelf", "models": ["Yawn"], "workstation": "SUBASSY", "qty_per_rack": 16, "qty_per_pallet": 16, "kanban_pallets": 22, "hours_per_kanban": 4.125, "confidence": "verified" },
+      { "pn": "1222851-01", "description": "M Shelf", "models": ["Bloom"], "workstation": "SUBASSY", "qty_per_rack": 16, "qty_per_pallet": 16, "kanban_pallets": 22, "hours_per_kanban": 4.125, "confidence": "verified" },
+      { "pn": "1177652", "description": "Sub-Assembly Busbar", "models": ["Yawn", "Bloom"], "workstation": "SUBASSY", "qty_per_rack": 16, "qty_per_pallet": 320, "kanban_pallets": 2, "hours_per_kanban": 7.5, "confidence": "verified" },
+      { "pn": "1181665", "description": "Battery Water Pan", "models": ["Yawn", "Bloom"], "workstation": "WS4", "qty_per_rack": 1, "qty_per_pallet": 80, "kanban_pallets": 1, "hours_per_kanban": 15.0, "confidence": "verified" },
+      { "pn": "1192884", "description": "Adapter Plates", "models": ["Yawn"], "workstation": "WS4", "qty_per_rack": 2, "qty_per_pallet": 40, "kanban_pallets": 2, "hours_per_kanban": 7.5, "confidence": "verified" },
+      { "pn": "1181838-03", "description": "T Shelf", "models": ["Yawn", "Bloom"], "workstation": "WS5", "qty_per_rack": 16, "qty_per_pallet": 16, "kanban_pallets": 22, "hours_per_kanban": 4.125, "confidence": "verified" },
+      { "pn": "1200907", "description": "Right Bottom Drain Module", "models": ["Yawn", "Bloom"], "workstation": "WS7", "qty_per_rack": 2, "qty_per_pallet": 1200, "kanban_pallets": 1, "hours_per_kanban": 112.5, "confidence": "verified" },
+      { "pn": "1200909", "description": "Left Bottom Drain Module", "models": ["Yawn", "Bloom"], "workstation": "WS7", "qty_per_rack": 2, "qty_per_pallet": 1200, "kanban_pallets": 1, "hours_per_kanban": 112.5, "confidence": "verified" },
+      { "pn": "1199546", "description": "Left Drain Module", "models": ["Yawn", "Bloom"], "workstation": "WS7 & WS8", "qty_per_rack": 14, "qty_per_pallet": 1680, "kanban_pallets": 1, "hours_per_kanban": 22.5, "confidence": "verified" },
+      { "pn": "1200637", "description": "Right Drain Module", "models": ["Yawn", "Bloom"], "workstation": "WS7 & WS8", "qty_per_rack": 14, "qty_per_pallet": 1680, "kanban_pallets": 1, "hours_per_kanban": 22.5, "confidence": "verified" },
+      { "pn": "1206264", "description": "Center Rack Cable Manager", "models": ["Yawn", "Bloom"], "workstation": "WS8", "qty_per_rack": 7, "qty_per_pallet": 144, "kanban_pallets": 2, "hours_per_kanban": 7.714, "confidence": "verified" },
+      { "pn": "1231956", "description": "Right Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": null, "qty_per_rack": null, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 7.875, "confidence": "estimated", "note": "Kanban tab only; BOM row beyond photo" },
+      { "pn": "1231954", "description": "Left Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": null, "qty_per_rack": null, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 7.875, "confidence": "estimated" },
+      { "pn": "1231955", "description": "Front Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": null, "qty_per_rack": null, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 4.5, "confidence": "estimated" }
+    ]
+  },
+
+  "small_parts_2bin": {
+    "$comment": "Green rows. Qty per rack verified (daily demand = qty x 96 checks out). Not pallet Kanbans.",
+    "items": [
+      { "pn": "7926361", "description": "Label Stock", "workstation": "WS1", "qty_per_rack": "roll" },
+      { "pn": "7002313", "description": "6-32 Screw", "workstation": "WS1", "qty_per_rack": 60 },
+      { "pn": "7002313", "description": "6-32 Screw", "workstation": "WS2", "qty_per_rack": 12 },
+      { "pn": "1110468", "description": "Screw", "workstation": "WS2", "qty_per_rack": 8 },
+      { "pn": "1173264", "description": "Guide Pins", "workstation": "WS2", "qty_per_rack": 10 },
+      { "pn": "1140075", "description": "Screw", "workstation": "WS3", "qty_per_rack": 4 },
+      { "pn": "1054978", "description": "Screw", "workstation": "WS3", "qty_per_rack": 8 },
+      { "pn": "1213702", "description": "Fastener Hook", "workstation": "WS3", "qty_per_rack": 8 },
+      { "pn": "7005968", "description": "Screw", "workstation": "SUBASSY", "qty_per_rack": 64 },
+      { "pn": "1179766-01", "description": "Warning Label", "workstation": "SUBASSY", "qty_per_rack": 16 },
+      { "pn": "1066265", "description": "Drain Tube", "workstation": "WS4", "qty_per_rack": 2 },
+      { "pn": "1212781", "description": "Screw", "workstation": "WS4", "qty_per_rack": 8 },
+      { "pn": "1172487", "description": "Screw", "workstation": "WS4", "qty_per_rack": 11 },
+      { "pn": "1140075", "description": "Screw", "workstation": "WS5", "qty_per_rack": 64 },
+      { "pn": "1222546", "description": "Label Stock (Yawn)", "workstation": "WS5", "qty_per_rack": "roll" },
+      { "pn": "1222846-01", "description": "Label Stock (Bloom)", "workstation": "WS5", "qty_per_rack": "roll" },
+      { "pn": "7100691", "description": "Screw", "workstation": "WS7", "qty_per_rack": 28 },
+      { "pn": "7100691", "description": "Screw", "workstation": "WS7/WS8", "qty_per_rack": 32 },
+      { "pn": "1051591", "description": "M&T Labels", "workstation": "WS7/WS8", "qty_per_rack": 1 },
+      { "pn": "1172487", "description": "Screw", "workstation": "WS7/WS8", "qty_per_rack": 16 }
+    ],
+    "pn_confidence": "estimated",
+    "qty_confidence": "verified"
+  },
+
+  "slide_kanban_map_P1": {
+    "$comment": "Hours printed on the older Kanban map slide (5 racks/h basis). Differs from the sheet; kept for layout ordering only. 'x2' = two kanbans of that size side by side.",
+    "lanes_top_to_bottom": [
+      { "label": "Racks", "hours": "5 + 5" },
+      { "label": "Right Rails", "hours": "13.5 x2" },
+      { "label": "Left Rails", "hours": "32 x2" },
+      { "label": "Top Shelf", "hours": "4.8 + 4.8" },
+      { "label": "Left Cable Manager", "hours": "54 x2" },
+      { "label": "Right Cable Manager", "hours": "54 x2" },
+      { "label": "Battery Shelves", "hours": "4.8 + 4.8" },
+      { "label": "T Shelves", "hours": "4.6 + 4.6" },
+      { "label": "Subassembly Busbar", "hours": "8 x2" },
+      { "label": "Adaptor Plate", "hours": "8 x2" },
+      { "label": "Battery Water Pan", "hours": "16 x2" },
+      { "label": "M Shelves", "hours": "4.6 + 4.6" },
+      { "label": "Center Rack Cable Manager", "hours": "8 x2" },
+      { "label": "Right Bottom Drain Module", "hours": "120 x2" },
+      { "label": "Left Bottom Drain Module", "hours": "120 x2" },
+      { "label": "Left Drain Module", "hours": "56 x2" },
+      { "label": "Right Drain Module", "hours": "56 x2" }
+    ],
+    "confidence": "verified"
+  },
+
+  "layout": {
+    "kanban_area": { "value": "'Blue Box' on the left: horizontal lanes stacked top to bottom in the order above; big pallet parts (Racks, Battery/T/M Shelves) get full-width lanes, smaller parts share split lanes", "confidence": "verified", "src": "P1" },
+    "kanban_area_expansion": { "value": "Expanded from both sides, ~2x previous size; pallets side by side; middle aisle for M shelves", "confidence": "verified", "src": "P5" },
+    "routes": { "value": "Dotted handler paths loop from Kanban area to POU column", "confidence": "verified", "src": "P1" },
+    "production_line": { "value": "One vertical line on the right, ~10 stations with paired POU pallet positions on the aisle side", "confidence": "estimated", "src": "P1" },
+    "main_aisle": { "value": "Vertical aisle along the right edge", "confidence": "estimated", "src": "P1" },
+    "top_right_zone": { "value": "Boxed zone with green 2x5 rack positions near line start", "confidence": "estimated", "src": "P1" },
+    "small_parts_rack": { "value": "Labeled 2-bin shelving next to the line, moved from old common DSV/CLS drop zone", "confidence": "verified", "src": "P4" },
+    "signage": { "value": "Hanging double-sided part-number signs + floor part numbers", "confidence": "verified", "src": "P3" },
+    "dimensions_m": { "value": null, "confidence": "placeholder" }
+  },
+
+  "still_missing": [
+    "Workstation cycle times",
+    "WS6 contents and BOM rows after row 55 (shipping bracket qty/workstation)",
+    "DSV preparation time (only total 2 h lead time known)",
+    "Material handler count, cart capacity, travel speed",
+    "Floor dimensions and station spacing",
+    "Physical part / pallet dimensions"
+  ]
+}
