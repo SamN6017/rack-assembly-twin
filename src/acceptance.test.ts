@@ -59,7 +59,8 @@ describe('acceptance', () => {
     // Every rack takes exactly its BOM quantity of each tracked part at each station it visits...
     let expected = 0
     for (const e of base.inventory) {
-      if (e.kind !== 'rack') continue
+      // Parts are fitted when the rack arrives, one conveyor transfer after the index.
+      if (e.kind !== 'rack' || e.t + base.transferS > base.horizon) continue
       const visits = e.station === 'WS4' ? [station('WS4'), station('SUBASSY')] : [station(e.station)]
       for (const v of visits) for (const p of v.pou) {
         const part = getPart(p.pn)

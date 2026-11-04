@@ -45,3 +45,32 @@ export function partSignTexture(part: KanbanPart): THREE.CanvasTexture {
   cache.set(part.pn, tex)
   return tex
 }
+
+/** Hanging workstation sign: big station number on safety blue, operation summary underneath. */
+export function stationSignTexture(id: string, caption: string, placeholder: boolean): THREE.CanvasTexture {
+  const key = `station:${id}:${caption}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const w = 512, h = 256
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = placeholder ? '#4b5563' : '#1d4f91'
+  ctx.fillRect(0, 0, w, h)
+  ctx.strokeStyle = '#f2c218'
+  ctx.lineWidth = 10
+  ctx.strokeRect(5, 5, w - 10, h - 10)
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = 'bold 132px "Helvetica Neue", Arial, sans-serif'
+  ctx.fillText(id, w / 2, 104)
+  ctx.font = '28px "Helvetica Neue", Arial, sans-serif'
+  ctx.fillText(caption, w / 2, 204, w - 40)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  cache.set(key, tex)
+  return tex
+}

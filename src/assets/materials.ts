@@ -4,7 +4,7 @@ export type MatKey =
   | 'steelDark' | 'steelGrey' | 'zinc' | 'uprightBlue' | 'beamOrange' | 'wood' | 'woodDark'
   | 'cardboard' | 'cardboardDark' | 'wrap' | 'copper' | 'rubber' | 'safetyYellow' | 'benchTop'
   | 'whiteboard' | 'screen' | 'binBlue' | 'binRed' | 'pocketBlue' | 'bezelBlack' | 'bezelGrey'
-  | 'batteryGrey' | 'wall' | 'chrome' | 'ledGreen' | 'columnPaint'
+  | 'batteryGrey' | 'wall' | 'chrome' | 'ledGreen' | 'columnPaint' | 'conveyorBlue' | 'lampWhite' | 'floorYellow' | 'floorWhite'
 
 const std = (color: string, roughness: number, metalness = 0, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra })
@@ -36,6 +36,10 @@ export const MATERIALS: Record<MatKey, THREE.Material> = {
   wall: std('#c9cbc6', 0.95),
   chrome: std('#d9dde1', 0.2, 1),
   ledGreen: std('#38d16a', 0.4, 0, { emissive: '#38d16a', emissiveIntensity: 1.5 }),
+  conveyorBlue: std('#2e4a66', 0.5, 0.45),
+  lampWhite: std('#f4f6f8', 0.3, 0, { emissive: '#fdfbf2', emissiveIntensity: 2.2 }),
+  floorYellow: std('#e9b81a', 0.7, 0, { polygonOffset: true, polygonOffsetFactor: -2 }),
+  floorWhite: std('#e8e8e4', 0.7, 0, { polygonOffset: true, polygonOffsetFactor: -2 }),
 }
 
 /** Procedural polished-concrete texture with saw-cut joints every `jointEvery` metres. */

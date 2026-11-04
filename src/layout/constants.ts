@@ -59,3 +59,22 @@ export const RACKING = { bayWidth: 2.74, depth: 1.07, levels: [0, 1.7, 3.4, 5.1]
 
 // Rack under assembly. Typical GPU rack footprint; NOT from evidence.
 export const SERVER_RACK = { width: 0.6, depth: 1.2, height: 2.286 }
+
+// Rack conveyor (V2). No line equipment data was supplied: an indexing roller conveyor carrying
+// each rack on a carrier, sized for the rack footprint. All values ESTIMATES.
+// The main run follows the existing station line; the outfeed turns east past WS8 and runs north
+// on the main-aisle side of the benches to finished-rack staging (top right of P1).
+export const CONVEYOR = {
+  bedWidth: 1.4,       // across travel; rack depth 1.2 m plus guides
+  bedHeight: 0.25,     // carrier deck height above the floor
+  loadDz: 2.0,         // load position before WS1: the next base rack goes on while WS1 empties
+  outfeedX: 55.2,      // outfeed centreline, between the benches and the main aisle
+  turnDz: 2.8,         // past WS8 to the east turn, clear of the 2-bin shelving
+  endZ: 1.0,           // outfeed ends (lowering table) just south of finished staging
+  laneTurnZ: -1.8,     // racks roll off the table into staging along a marked floor lane
+  laneX: 56.4,
+  laneZ: -4.7,         // between the two rows of staging spots
+}
+
+// Assembly workers (V2): two per station, one each side of the rack. Positions only.
+export const WORKER = { sideA: 1.45, sideB: 1.1, stagger: 0.2, radius: 0.25 }

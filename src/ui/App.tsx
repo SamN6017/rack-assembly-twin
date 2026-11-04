@@ -7,6 +7,7 @@ import { CompareView } from './CompareView'
 import { KanbanBoard } from './KanbanBoard'
 import { LeftPanel } from './LeftPanel'
 import { LineBanner } from './LineBanner'
+import { WalkHud } from './WalkHud'
 import { RightPanel } from './RightPanel'
 import { SimulatorPanel } from './SimulatorPanel'
 
@@ -55,6 +56,7 @@ function useShortcuts() {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return
       const ui = useUi.getState()
+      if (ui.cameraMode === 'walk') return  // WASD and Esc belong to the walkthrough
       if (e.key === 'Escape') ui.select(null)
       else if (e.key === 'f' || e.key === 'F') ui.focusSelected()
     }
@@ -76,6 +78,7 @@ export function App() {
         <FactoryScene />
         {tab === 'assets' && <AssetLibrary />}
         <LineBanner />
+        <WalkHud />
       </main>
       <aside className="overflow-y-auto border-l border-white/10 bg-[#111214]">
         <RightPanel />

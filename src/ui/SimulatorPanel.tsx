@@ -3,7 +3,7 @@ import { getPart, KANBAN_PARTS, modelTab } from '../data/parts'
 import { LAYOUT } from '../layout/factoryLayout'
 import { EXPERIMENTS, focusLabel, type ExperimentId } from '../sim/experiments'
 import type { Kpis } from '../sim/kpis'
-import { isTracked } from '../sim/movementSim'
+import { isTracked, targetBy } from '../sim/movementSim'
 import { cachedKpis, formatClock, kpisFor, sameConfig, simClock, useSim, type Scenario } from '../store/simStore'
 import { useUi } from '../store/uiStore'
 import { ConfidenceBadge } from './common'
@@ -46,7 +46,7 @@ function LineColumn() {
   const { result, snapshot, config, seek } = useSim()
   const select = useUi((s) => s.select)
   const line = snapshot.line
-  const target = Math.min(result.targetRacks, Math.floor(t / result.takt) + 1)
+  const target = targetBy(result, t)
   const stops = result.blocks.filter((b) => b.from <= t)
   const stoppedSec = stops.reduce((a, b) => a + Math.min(b.to ?? result.horizon, t) - b.from, 0)
   const locate = (key: string) => {

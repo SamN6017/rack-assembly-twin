@@ -6,6 +6,10 @@ import * as THREE from 'three'
 import { BUILDING } from '../layout/constants'
 import { Building } from './Building'
 import { CameraRig, VIEWS } from './CameraRig'
+import { FirstPerson } from './FirstPerson'
+import { AssemblyLine } from './AssemblyLine'
+import { LineRacks } from './LineRacks'
+import { Workers } from './Workers'
 import { DsvArea } from './DsvArea'
 import { Equipment } from './Equipment'
 import { FloorMarkings } from './FloorMarkings'
@@ -21,6 +25,7 @@ import { useUi } from '../store/uiStore'
 const down = { x: 0, y: 0 }
 const onPointerDown = (e: React.PointerEvent) => { down.x = e.clientX; down.y = e.clientY }
 const onPointerMissed = (e: MouseEvent) => {
+  if (useUi.getState().cameraMode === 'walk') return
   if (e.type === 'click' && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) useUi.getState().select(null)
 }
 
@@ -87,6 +92,9 @@ export const FactoryScene = memo(function FactoryScene() {
       <KanbanArea />
       <DsvArea />
       <ProductionLine />
+      <AssemblyLine />
+      <LineRacks />
+      <Workers />
       <Equipment />
       <StagingLane />
       <Handlers />
@@ -97,6 +105,7 @@ export const FactoryScene = memo(function FactoryScene() {
       <Labels />
       <Selection />
       <CameraRig />
+      <FirstPerson />
     </Canvas>
   )
 })

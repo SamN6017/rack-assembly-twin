@@ -203,7 +203,53 @@ Inventory transfer points: reserve on HANDLER_DISPATCHED (Kanban → in transit)
   it caught the racking bay's manifest height (floor to top instead of the beams' own extent),
   now fixed with a `floorOffset`, so a correctly modelled bay GLB is no longer rejected.
 
-## 11. Milestones
+## 11. V2: physical assembly line, workers and walkthrough
+
+- **Timing model (the one engine change).** V1 indexed the paced line instantaneously. In V2 each
+  index starts a physical transfer: every rack rides the conveyor one station together (walking
+  beam), taking `transferS` from the conveyor's placeholder speed and acceleration (0.4 m/s,
+  0.2 m/s² → ~22 s for the 8.2 m pitch). Each station assembles for the rest of the takt
+  (`assemblyS = takt − transferS`). Throughput is unchanged and racks can never collide, because
+  they always move together. Material now leaves POU stock when the rack arrives (assembly start);
+  the shortage check stays at release, so a rack is never stranded mid-transfer. A rack is complete
+  when WS8 finishes it, one takt after entering WS8 (V1 counted arrival at WS8): the 10 h baseline
+  is 50 racks, not 51 (the 51st was a pre-loaded rack counted at t = 0). With `transferS = 0`
+  the timing reduces to V1's. A takt shorter than transfer + 30 s is rejected.
+- **Conveyor layout** (`LAYOUT.conveyor`, estimates): an indexing roller conveyor on the existing
+  station line (x = 51), a load position 2 m upstream of WS1 (the next base rack goes on while WS1
+  empties), and an outfeed that turns east past WS8 and runs north between the benches and the
+  main aisle to a lowering table, from which racks roll along a marked lane into finished staging
+  (the top-right box of P1). The U-shaped concept layout was not used: it would have meant moving
+  the line, POU column and handler routes. Material-handler routes are unchanged; the conveyor
+  beds are obstacles for route checks and the walkthrough.
+- **Rack lifecycle** (`src/sim/assemblyLine.ts`, pure): CREATED → MOVING_TO_STATION (load → WS1)
+  → ASSEMBLING → WAITING_FOR_TRANSFER (only while the line is stopped) → MOVING_TO_NEXT_STATION …
+  → WS8_COMPLETE → MOVING_TO_FINISHED_STAGING → COMPLETED. AT_STATION and ASSEMBLY_COMPLETE are
+  instants (arrival, end of the window). Rack ids R-001… (R-001 to R-008 were on the line at shift
+  start). Components appear when a station's window ends; the per-station content is V1's
+  `INSTALL_SEQUENCE` from the BOM; WS6 has no parts and is labelled a placeholder.
+- **Workers**: two per station (16), procedural figures with hard hat, glasses, hi-vis vest, gloves
+  and boots; A on the POU side, B between rack and bench, both facing the rack and tested clear of
+  conveyor, benches, pallets and each other. Pose is a pure function of station state and sim
+  time: a fetch → carry → install → drive fasteners → check loop while assembling; standing clear
+  while the rack moves; arms folded when done and waiting; looking to the POU when the station is
+  short. The motion is illustrative, not a timed work instruction.
+- **Station kit**: hanging sign per station (WS6 grey, placeholder), stack light (green
+  assembling, amber waiting or rack moving, red short of material), tool balancer over the rack.
+  High-bay fixtures, floor tape round the conveyor, guard rail between the outfeed and main aisle.
+- **First-person walkthrough**: eye height 1.7 m, WASD / arrows, Shift faster, mouse look under
+  pointer lock, Esc releases, sensitivity slider, *Exit walkthrough* returns to the overview. The
+  walker (0.3 m radius) slides along walls, racking, pallets, benches, conveyor and workers; moving
+  handlers are not obstacles. A flood-fill test proves both sides of every station, the Kanban
+  aisles and the main aisle are reachable from the spawn point. Selecting objects is off while
+  walking; a HUD shows the nearest station's rack and state.
+- **Camera modes**: overview (presets), first-person, station focus, rack follow.
+- **Tests added**: complete rack journeys, no teleporting (speed bound), one rack per station and
+  no rack contact (5, 8 and 12 racks/h), never moving before a station finishes, the line frozen
+  during stops with the short station flagged, consumption only at arrival, completions matching
+  the production counter, worker clearance, walkthrough collision and reachability. 71 tests.
+
+## 12. Milestones
 
 1. **Factory environment and static assets** (done) — layout module, procedural asset library, building, Kanban
    area populated from the sheet, line, POU, DSV racking, UI shell.
@@ -212,3 +258,4 @@ Inventory transfer points: reserve on HANDLER_DISPATCHED (Kanban → in transit)
 4. Part-level inventory and Kanban state machine. **Done.**
 5. Scenario controls and the discrete-event engine. **Done.**
 6. KPI dashboard, scenario comparison, acceptance tests. **Done.**
+7. V2: conveyor and rack transport, rack lifecycle, 16 workers, first-person walkthrough. **Done.**

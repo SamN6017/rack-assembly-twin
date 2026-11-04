@@ -116,7 +116,8 @@ describe('movement simulation', () => {
     const station = (id: string) => LAYOUT.stations.find((x) => x.id === id)!
     let expected = 0
     for (const e of result.inventory) {
-      if (e.kind !== 'rack') continue
+      // Parts are fitted when the rack arrives, one conveyor transfer after the index.
+      if (e.kind !== 'rack' || e.t + result.transferS > result.horizon) continue
       // Sub-assembly works in step with WS4, so it builds for the rack at WS4.
       const visits = e.station === 'WS4' ? [station('WS4'), station('SUBASSY')] : [station(e.station)]
       for (const v of visits) for (const p of v.pou) {

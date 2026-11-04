@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { KANBAN_PARTS } from '../data/parts'
 import { coverageHours } from '../sim/kpis'
-import { isTracked } from '../sim/movementSim'
+import { isTracked, targetBy } from '../sim/movementSim'
 import { kpisFor, simClock, useSim } from '../store/simStore'
 import { useUi } from '../store/uiStore'
 import { axisProps, ChartCard, ChartTooltip, CRITICAL, fmtH, hourTicks, INK, Legend, SERIES } from './charts'
@@ -45,7 +45,7 @@ export function Dashboard() {
 
   const stops = result.blocks.filter((b) => b.from <= t)
   const lostSec = stops.reduce((a, b) => a + Math.min(b.to ?? result.horizon, t) - b.from, 0)
-  const target = Math.min(result.targetRacks, Math.floor(t / result.takt) + 1)
+  const target = targetBy(result, t)
   const closed = result.cycles.filter((c) => c.replenishedAt !== undefined && c.replenishedAt <= t)
   const avgLead = closed.length ? closed.reduce((a, c) => a + c.replenishedAt! - c.emptyAt, 0) / closed.length : null
   const late = result.cycles.filter((c) => c.dueAt <= t && (c.replenishedAt ?? Infinity) > c.dueAt).length

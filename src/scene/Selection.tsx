@@ -20,14 +20,15 @@ function BoundsBox({ b, color, opacity, thick }: { b: Bounds; color: string; opa
  * mounting/unmounting it on every pointer move races React's render and throws.
  */
 export function Selection() {
-  // Moving entities (handlers) draw their own selection ring; a static box would be left behind.
+  // Moving entities (handlers, line racks) draw their own selection ring; a static box would be left behind.
   // Select ids, then resolve: a selector returning a fresh object would re-render forever.
   const selectedId = useUi((s) => s.selected)
   const hoveredId = useUi((s) => (s.hovered !== s.selected ? s.hovered : null))
   const selected = selectedId ? resolveEntity(selectedId) : null
   const hovered = hoveredId ? resolveEntity(hoveredId) : null
-  const staticSel = selected && selected.kind !== 'handler' ? selected : null
-  const staticHover = hovered && hovered.kind !== 'handler' ? hovered : null
+  const moving = (k: string) => k === 'handler' || k === 'assemblyRack'
+  const staticSel = selected && !moving(selected.kind) ? selected : null
+  const staticHover = hovered && !moving(hovered.kind) ? hovered : null
   const slot = selected?.slotId ? slotBounds(selected.slotId) : null
   const tagPos: [number, number, number] = staticHover
     ? [staticHover.bounds.x, staticHover.bounds.y + staticHover.bounds.h / 2 + 0.35, staticHover.bounds.z]

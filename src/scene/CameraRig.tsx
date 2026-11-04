@@ -45,6 +45,7 @@ export function CameraRig() {
   const ref = useRef<CameraControls>(null)
   const camera = useUi((s) => s.camera)
   const focusNonce = useUi((s) => s.focusNonce)
+  const walking = useUi((s) => s.cameraMode === 'walk')
   const scratch = useRef({ want: new THREE.Vector3(), have: new THREE.Vector3() })
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function CameraRig() {
   useFrame(() => {
     const id = useUi.getState().follow
     const controls = ref.current
-    if (!id || !controls) return
+    if (!id || !controls || useUi.getState().cameraMode === 'walk') return
     const { want, have } = scratch.current
     if (!followPosition(id, want)) return
     controls.getTarget(have)
@@ -83,6 +84,7 @@ export function CameraRig() {
     <CameraControls
       ref={ref}
       makeDefault
+      enabled={!walking}
       minDistance={1.5}
       maxDistance={260}
       maxPolarAngle={Math.PI / 2 - 0.04}

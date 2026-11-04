@@ -1,6 +1,6 @@
 import { getPart, KANBAN_PARTS } from '../data/parts'
 import { LAYOUT } from '../layout/factoryLayout'
-import { applyEvent, initialSnapshot, isTracked, partRate, poseAt, type InventorySnapshot, type MovementResult } from './movementSim'
+import { applyEvent, initialSnapshot, rackId, isTracked, partRate, poseAt, type InventorySnapshot, type MovementResult, targetBy } from './movementSim'
 
 /** Hours of consumption one part's floor stock (both Kanbans plus every POU) covers. */
 export function coverageHours(s: InventorySnapshot, result: MovementResult, pn: string): number | null {
@@ -105,7 +105,7 @@ export function computeSeries(result: MovementResult, step = SERIES_STEP): Serie
     for (const x of result.tasks) if (x.dispatchedAt <= t && x.doneAt > t) { if (roleOf.get(x.handler) === 'CLS') busyCls++; else busyDsv++ }
     const lost = result.blocks.reduce((a, b) => a + Math.max(0, Math.min(b.to ?? H, t) - b.from), 0)
     out.push({
-      t, h: t / 3600, racks: s.racksCompleted, target: Math.min(result.targetRacks, Math.floor(t / result.takt) + 1),
+      t, h: t / 3600, racks: s.racksCompleted, target: targetBy(result, t),
       lostMin: lost / 60, stopped: s.line.blocked ? 1 : 0, emptyKanbans, loop, kanbanPcs,
       pouPcs: [...s.pou.values()].reduce((a, b) => a + b, 0), transitPcs, busyCls, busyDsv,
     })
@@ -135,9 +135,9 @@ export function eventLog(result: MovementResult): LogEvent[] {
   const lineIds = LAYOUT.stations.filter((x) => x.id !== 'SUBASSY').map((x) => x.id)
   for (const e of result.inventory) {
     if (e.kind === 'rack') {
-      const no = e.rack + lineIds.length
-      if (e.station === lineIds[0]) out.push({ t: e.t, type: 'PRODUCTION_REQUESTED', text: `Rack #${no} (${e.model}) starts at ${e.station}`, entity: `rack:${e.station}` })
-      if (e.last) out.push({ t: e.t, type: 'RACK_COMPLETED', text: `Rack #${no} (${e.model}) completed`, entity: `rack:${e.station}` })
+      if (e.station === lineIds[0]) out.push({ t: e.t, type: 'PRODUCTION_REQUESTED', text: `${rackId(e.rack)} (${e.model}) loaded at ${e.station}`, entity: `linerack:${e.rack}` })
+    } else if (e.kind === 'complete') {
+      out.push({ t: e.t, type: 'RACK_COMPLETED', text: `${rackId(e.rack)} (${e.model}) completed at ${lineIds[lineIds.length - 1]}`, entity: `linerack:${e.rack}` })
     } else if (e.kind === 'pou' && e.consumed > 0) {
       const [st, pn] = e.key.split(':')
       out.push({ t: e.t, type: 'MATERIAL_CONSUMED', text: `${st} fitted ${e.consumed} × ${desc(pn)} (${e.pieces} left)`, entity: `pou:${st}:${pn}` })

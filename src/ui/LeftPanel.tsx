@@ -1,6 +1,7 @@
 import { PLANNING_BASIS } from '../data/parts'
 import { useUi, type CameraPreset, type Layer } from '../store/uiStore'
 import { Row, Section } from './common'
+import { AssemblyPanel } from './AssemblyPanel'
 import { Playback } from './Playback'
 import { ScenarioForm } from './ScenarioForm'
 
@@ -24,6 +25,8 @@ export function LeftPanel() {
   const sub = 'rounded px-2 py-1.5 text-left text-xs ring-1 transition-colors disabled:cursor-not-allowed disabled:text-neutral-600 disabled:ring-white/5'
   return (
     <div className="text-neutral-300">
+      <AssemblyPanel />
+
       <Section title="Planning basis" right={<span className="text-[10px] text-neutral-500">from sheet, read-only</span>}>
         <Row label="Baseline rate" value={`${PLANNING_BASIS.baselineRatePerHour} racks/h`} confidence="verified" />
         <Row label="Sheet basis" value={`${PLANNING_BASIS.dailyDemandRacks}/day · ${PLANNING_BASIS.hoursPerDay} h`} confidence="verified" />

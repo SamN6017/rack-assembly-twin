@@ -91,3 +91,20 @@ export function buildRackAtStage(stage: number): GeoBuilder {
   if (done('WS8')) for (let k = 0; k < 7; k++) b.box('bezelBlack', 0.48, 0.03, 0.04, 0, 0.45 + k * 0.27, D / 2 - 0.07)
   return b
 }
+
+/** A fully assembled rack after WS8: everything installed, plus a green "passed" beacon and tag on top. */
+export function buildCompletedRack(): GeoBuilder {
+  const b = buildRackAtStage(INSTALL_SEQUENCE.length - 1)
+  b.box('steelGrey', 0.1, 0.02, 0.1, 0, H + 0.01, 0)
+  b.cyl('ledGreen', 0.04, 0.09, 0, H + 0.065, 0, 'y', 14)
+  b.box('ledGreen', 0.3, 0.06, 0.004, 0, H - 0.12, D / 2 + 0.002)
+  return b
+}
+
+/** Rack carrier on the conveyor: a steel plate with corner locators under the rack's casters. */
+export function buildCarrier(): GeoBuilder {
+  const b = new GeoBuilder()
+  b.box('steelGrey', W + 0.16, 0.04, D + 0.1, 0, -0.02, 0)
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box('safetyYellow', 0.06, 0.03, 0.06, sx * (W / 2 + 0.03), 0.015, sz * (D / 2 + 0.0))
+  return b
+}

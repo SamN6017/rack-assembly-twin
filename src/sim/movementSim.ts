@@ -1,4 +1,5 @@
 import { getPart, KANBAN_PARTS, PART_BY_PN, type KanbanPart, type Model } from '../data/parts'
+import { LINE } from '../layout/constants'
 import { LAYOUT } from '../layout/factoryLayout'
 import { EventQueue, seededRandom } from './eventQueue'
 import { buildPath, makeProfile, type Vec2 } from './path'
@@ -22,6 +23,10 @@ import {
  * front of it. With shortage 'block' the line does not index while any station lacks the pieces
  * for its rack; it restarts the moment the missing pallet is delivered (PRODUCTION_BLOCKED). With
  * 'pass' a short rack moves on and the pieces are owed (logged as a starvation).
+ * Each index starts a physical transfer: every rack rides the conveyor to the next station
+ * together (walking-beam style), taking `transferS` from the conveyor's placeholder speed. Each
+ * station then assembles for the rest of the takt; material leaves POU stock when the rack arrives
+ * (assembly start), and a rack is complete when WS8's work ends, one takt after it entered WS8.
  * Station cycle times are unknown, so the takt stands in for them: output is material-feasible
  * production, not verified factory throughput.
  * Everything is computed up front, so handler poses and stock are pure functions of time.
@@ -65,6 +70,11 @@ export interface MovementConfig {
   extraKanbanPns: string[]
   /** Starting stock as a share of full, per part: both Kanbans together, and the POU pallet. */
   stock: Record<string, { kanban?: number; pou?: number }>
+  /** Rack conveyor between stations, m/s and m/s². PLACEHOLDERS: no line equipment data. */
+  conveyorSpeed: number
+  conveyorAccel: number
+  /** Outfeed conveyor from WS8 to finished-rack staging, m/s. PLACEHOLDER. */
+  outfeedSpeed: number
 }
 
 export const DEFAULT_MOVEMENT: MovementConfig = {
@@ -74,7 +84,11 @@ export const DEFAULT_MOVEMENT: MovementConfig = {
   loadS: 20, unloadS: 20, turnRateDeg: 90,
   inspectionIntervalMin: 60, dsvPrepMin: 45, dsvPrepTeams: 2, leadTimeH: 2,
   pouReorderRacks: 1, clsPriority: 'fifo', extraKanbanPns: [], stock: {},
+  conveyorSpeed: 0.4, conveyorAccel: 0.2, outfeedSpeed: 0.4,
 }
+
+/** Seconds a rack takes to ride the conveyor one station pitch. */
+export const transferSeconds = (cfg: MovementConfig) => makeProfile(LINE.stationPitch, cfg.conveyorSpeed, cfg.conveyorAccel).duration
 
 /** Handler bays in the layout cap the staffing levels a scenario can use. */
 export const MAX_HANDLERS = {
@@ -97,6 +111,8 @@ export type InvEvent =
   | { t: number; kind: 'starve'; key: string; backorder: number }
   | { t: number; kind: 'rack'; station: string; rack: number; model: Model; last: boolean }
   | { t: number; kind: 'inspect' }
+  /** WS8 finished this rack: a completed rack (RACK_COMPLETED). */
+  | { t: number; kind: 'complete'; rack: number; model: Model }
   /** The paced line stopped (keys: POUs it waits for) or restarted. */
   | { t: number; kind: 'line'; blocked: boolean; keys: string[] }
 
@@ -176,6 +192,14 @@ export interface MovementResult {
   initialKanban: Record<string, number>
   /** Racks the line would finish in the horizon if it never stopped. */
   targetRacks: number
+  /** Start time of each line index j (all racks begin their transfer). */
+  indexTimes: number[]
+  /** Conveyor transfer between stations, and the assembly window left in each takt (s). */
+  transferS: number
+  assemblyS: number
+  /** Rack number of the first rack on the line at t = 0, and every rack's model from there on. */
+  firstRack: number
+  rackModels: Model[]
   /** Pieces held in third Kanbans at DSV (outside the floor stock, Experiment B). */
   reservePieces: number
   stats: {
@@ -204,6 +228,8 @@ interface HState {
 
 type Ev =
   | { type: 'index'; j: number }
+  | { type: 'assemble'; j: number }
+  | { type: 'complete'; rack: number }
   | { type: 'handlerFree'; h: number }
   | { type: 'inspect' }
   | { type: 'prepDone'; slotId: string }
@@ -238,6 +264,9 @@ export function stationStep(stationId: string): number {
 export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): MovementResult {
   const horizon = cfg.shiftH * cfg.shifts * 3600
   const takt = 3600 / cfg.ratePerHour
+  const transferS = transferSeconds(cfg)
+  if (!(transferS < takt - 30)) throw new Error(`Conveyor transfer (${Math.round(transferS)} s) leaves no assembly time in a ${Math.round(takt)} s takt`)
+  const indexTimes: number[] = []
   const rnd = seededRandom(cfg.seed)
   const q = new EventQueue<Ev>()
   const inventory: InvEvent[] = []
@@ -369,7 +398,7 @@ export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): Movement
   const lineStations = LAYOUT.stations.filter((s) => s.id !== 'SUBASSY')
   const lastStep = lineStations.length - 1
   const firstRack = -lastStep
-  const targetRacks = Math.floor(horizon / takt) + 1
+  const targetRacks = Math.floor(horizon / takt)
   const racksNeeded = targetRacks + lineStations.length + 1
   const models: Model[] = Array.from({ length: racksNeeded }, () => (rnd() < cfg.bloomShare ? 'Bloom' : 'Yawn'))
   const modelOf = (rack: number) => models[rack - firstRack]
@@ -662,17 +691,21 @@ export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): Movement
     return out
   }
 
+  /** Release the line: every rack starts its transfer to the next station. */
   function indexLine(t: number, j: number) {
-    for (const st of LAYOUT.stations) {
+    indexTimes[j] = t
+    for (const st of lineStations) {
       const k = stationStep(st.id)
-      const rack = j - k
-      consume(t, st.id, rack)
-      if (st.id !== 'SUBASSY') {
-        inventory.push({ t, kind: 'rack', station: st.id, rack, model: modelOf(rack), last: k === lastStep })
-        if (k === lastStep) stats.racksCompleted++
-      }
+      inventory.push({ t, kind: 'rack', station: st.id, rack: j - k, model: modelOf(j - k), last: k === lastStep })
     }
+    q.push(t + transferS, { type: 'assemble', j })
+    q.push(t + takt, { type: 'complete', rack: j - lastStep })
     q.push(t + takt, { type: 'index', j: j + 1 })
+  }
+
+  /** Racks have arrived: each station fits its parts (sub-assembly builds for the rack at WS4). */
+  function assemble(t: number, j: number) {
+    for (const st of LAYOUT.stations) consume(t, st.id, j - stationStep(st.id))
   }
 
   /** Index the line if every station has its parts; otherwise stop (or stay stopped) and wait. */
@@ -714,6 +747,13 @@ export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): Movement
     switch (ev.type) {
       case 'index':
         tryIndex(t, ev.j)
+        break
+      case 'assemble':
+        assemble(t, ev.j)
+        break
+      case 'complete':
+        stats.racksCompleted++
+        inventory.push({ t, kind: 'complete', rack: ev.rack, model: modelOf(ev.rack) })
         break
       case 'pouDelivered': {
         const key = `${ev.station}:${ev.pn}`
@@ -841,6 +881,7 @@ export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): Movement
   return {
     config: cfg, horizon, takt, handlers: hs.map((h) => h.tl), inventory, tasks, cycles, starvations, blocks, inspections,
     initialPieces, initialKanban, targetRacks, reservePieces, stats, conflicts,
+    indexTimes, transferS, assemblyS: takt - transferS, firstRack, rackModels: models,
   }
 }
 
@@ -899,7 +940,8 @@ export function applyEvent(s: InventorySnapshot, e: InvEvent) {
     case 'stage': if (e.pn) s.received += getPart(e.pn).qtyPerPallet ?? 0; s.stage[e.slot] = e.pn; break
     case 'kstate': s.cards.set(e.slotId, { state: e.state, since: e.t }); break
     case 'starve': if (e.backorder) s.backorder.set(e.key, e.backorder); else s.backorder.delete(e.key); break
-    case 'rack': s.atStation.set(e.station, { rack: e.rack, model: e.model }); if (e.last) s.racksCompleted++; break
+    case 'rack': s.atStation.set(e.station, { rack: e.rack, model: e.model }); break
+    case 'complete': s.racksCompleted++; break
     case 'inspect': s.lastInspection = e.t; break
     case 'line': s.line = { blocked: e.blocked, since: e.blocked && s.line.blocked ? s.line.since : e.t, keys: e.keys }; break
   }
@@ -922,6 +964,12 @@ export function snapshotAt(result: MovementResult, t: number): InventorySnapshot
   for (let i = 0; i < n; i++) applyEvent(s, result.inventory[i])
   return s
 }
+
+/** Display id of a rack: racks on the line at shift start are R-001 to R-008. */
+export const rackId = (rack: number) => `R-${String(rack + LAYOUT.stations.filter((s) => s.id !== 'SUBASSY').length).padStart(3, '0')}`
+
+/** Racks the line would have completed by time t without stops. */
+export const targetBy = (result: MovementResult, t: number) => Math.min(result.targetRacks, Math.floor(t / result.takt))
 
 /** The card cycle a Kanban is in (or last completed) at time t. */
 export function cycleAt(result: MovementResult, slotId: string, t: number): CardCycle | null {

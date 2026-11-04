@@ -1,3 +1,4 @@
+import { targetBy } from '../sim/movementSim'
 import { formatClock, useSim, type Speed } from '../store/simStore'
 import { useUi } from '../store/uiStore'
 import { Row, Section } from './common'
@@ -18,7 +19,7 @@ export function Playback() {
   const starved = result.starvations.filter((x) => x.from <= t).length
   const stops = result.blocks.filter((b) => b.from <= t)
   const lost = stops.reduce((a, b) => a + Math.min(b.to ?? result.horizon, t) - b.from, 0)
-  const target = Math.min(result.targetRacks, Math.floor(t / result.takt) + 1)
+  const target = targetBy(result, t)
   const late = result.cycles.filter((c) => (c.replenishedAt ?? Infinity) > c.dueAt && c.dueAt <= t).length
   const btn = 'rounded px-2.5 py-1.5 text-xs ring-1 transition-colors'
 

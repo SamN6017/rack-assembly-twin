@@ -3,6 +3,7 @@ import { loadProfile, type AssetId, type LoadProfile } from '../assets/manifest'
 import { PALLET, RACKING, SERVER_RACK } from '../layout/constants'
 import { LAYOUT, type Vec2 } from '../layout/factoryLayout'
 import { poseAt } from '../sim/movementSim'
+import { rackAt } from '../sim/assemblyLine'
 import { simClock, useSim } from '../store/simStore'
 
 /**
@@ -15,7 +16,7 @@ import { simClock, useSim } from '../store/simStore'
  *   dsv:<i>               illustrative DSV stock   stage:<i>            prepared pallet in DSV staging
  *   handler:<id>          material handler (moves; resolved from the live simulation)
  */
-export type EntityKind = 'kanbanPallet' | 'pouPallet' | 'lineRack' | 'station' | 'finishedRack' | 'equipment' | 'dsvStock' | 'stagePallet' | 'handler'
+export type EntityKind = 'kanbanPallet' | 'pouPallet' | 'lineRack' | 'station' | 'finishedRack' | 'equipment' | 'dsvStock' | 'stagePallet' | 'handler' | 'assemblyRack'
 
 export interface Bounds { x: number; y: number; z: number; w: number; h: number; d: number }
 
@@ -30,6 +31,8 @@ export interface Entity {
   stationId?: string
   assetId?: AssetId
   handlerId?: string
+  /** Rack number of an assembly-line rack (display id via rackId). */
+  rackNo?: number
   /** Moves or changes with simulation time; bounds are only valid for the moment of resolution. */
   dynamic?: boolean
 }
@@ -91,7 +94,7 @@ export const DSV_STOCK: DsvPallet[] = (() => {
 const cache = new Map<string, Entity | null>()
 
 export function resolveEntity(id: string): Entity | null {
-  if (id.startsWith('handler:') || id.startsWith('stage:')) return resolveDynamic(id)
+  if (id.startsWith('handler:') || id.startsWith('stage:') || id.startsWith('linerack:')) return resolveDynamic(id)
   if (cache.has(id)) return cache.get(id)!
   const e = resolve(id)
   cache.set(id, e)
@@ -155,6 +158,11 @@ function resolve(id: string): Entity | null {
 function resolveDynamic(id: string): Entity | null {
   const [kind, arg] = id.split(':')
   const sim = useSim.getState()
+  if (kind === 'linerack') {
+    const v = rackAt(sim.result, Number(arg), simClock.t)
+    if (!v) return null
+    return { id, kind: 'assemblyRack', label: `${v.id} · ${v.model}`, bounds: { x: v.x, y: v.y + SERVER_RACK.height / 2, z: v.z, w: SERVER_RACK.depth, h: SERVER_RACK.height, d: SERVER_RACK.width }, rackNo: v.rack, dynamic: true }
+  }
   if (kind === 'handler') {
     const h = sim.result.handlers.find((x) => x.id === arg)
     if (!h) return null

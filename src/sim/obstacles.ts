@@ -21,7 +21,8 @@ export function buildObstacles(layout: FactoryLayout): Obstacle[] {
   out.push({ id: 'kanban-board', rect: box(layout.kanbanBoard, 0.6, 3.7) })
   for (const p of layout.smallPartsRacks) out.push({ id: 'two-bin', rect: box(p, 1.8, 0.6) })
   for (const p of layout.carts) out.push({ id: 'cart', rect: box(p, 0.8, 1.4) })
-  for (const p of layout.finishedRackSpots) out.push({ id: 'finished-rack', rect: box(p, 0.6, 1.2) })
+  for (const p of layout.finishedRackSpots) out.push({ id: 'finished-rack', rect: box(p, 1.2, 0.6) })
+  layout.conveyor.rects.forEach((r, i) => out.push({ id: `conveyor:${i}`, rect: r }))
   const b = layout.building
   const t = 1
   out.push(

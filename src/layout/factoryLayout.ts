@@ -1,7 +1,7 @@
 import { KANBAN_PARTS, PLANNING_BASIS, getPart } from '../data/parts'
 import {
   AISLES, BACK_GAP, BUILDING, LINE, PALLET, PICK_AISLE, RACKING, ROUTES, ROW_CAPACITY, ROW_PITCH, ROW_SETBACK,
-  SERVER_RACK, STAGING, ZONES,
+  CONVEYOR, SERVER_RACK, STAGING, WORKER, ZONES,
 } from './constants'
 
 export interface Rect { minX: number; maxX: number; minZ: number; maxZ: number }
@@ -38,6 +38,24 @@ export interface RackingBay { x: number; z: number; facing: 1 | -1 }
 export interface ParkingSpot { x: number; z: number; role: 'CLS' | 'DSV'; junction: Vec2 }
 export interface Corridor { id: string; a: Vec2; b: Vec2 }
 
+/** Rack conveyor: station stops, the outfeed to staging, and solid bed footprints. */
+export interface Conveyor {
+  /** Rack position at WS1 … WS8, in line order. */
+  stops: Vec2[]
+  /** Where WS1 loads the next base rack onto a carrier, just upstream of WS1. */
+  load: Vec2
+  /** WS8 stop → east turn → north along the main aisle → lowering table at the end. */
+  outfeed: Vec2[]
+  /** Lowering table → floor lane between the staging rows (the rack then rolls into its spot). */
+  stagingLane: Vec2[]
+  laneZ: number
+  bedHeight: number
+  rects: Rect[]
+}
+
+/** Where a station's two assembly workers stand, facing the rack. */
+export interface WorkerSpot { id: string; station: string; side: 'A' | 'B'; x: number; z: number; yaw: number }
+
 export interface FactoryLayout {
   building: Rect
   kanbanArea: Rect
@@ -56,6 +74,8 @@ export interface FactoryLayout {
   smallPartsRacks: Vec2[]
   kanbanBoard: Vec2
   carts: Vec2[]
+  conveyor: Conveyor
+  workers: WorkerSpot[]
 }
 
 /**
@@ -256,6 +276,29 @@ function buildLayout(): FactoryLayout {
     clsPick: { ...AISLES.clsPick, minZ: R.topZ - 0.9, maxZ: botZ + 0.9 },
   }
 
+  const lineStops = stations.filter((s) => s.id !== 'SUBASSY').map((s) => s.rack)
+  const C = CONVEYOR
+  const turnZ = lastZ + C.turnDz
+  const half = C.bedWidth / 2
+  const conveyor: Conveyor = {
+    stops: lineStops,
+    load: { x: lineStops[0].x, z: lineStops[0].z - C.loadDz },
+    outfeed: [lineStops[lineStops.length - 1], { x: LINE.rackX, z: turnZ }, { x: C.outfeedX, z: turnZ }, { x: C.outfeedX, z: C.endZ }],
+    stagingLane: [{ x: C.outfeedX, z: C.endZ }, { x: C.outfeedX, z: C.laneTurnZ }, { x: C.laneX, z: C.laneTurnZ }, { x: C.laneX, z: C.laneZ }],
+    laneZ: C.laneZ,
+    bedHeight: C.bedHeight,
+    rects: [
+      { minX: LINE.rackX - half, maxX: LINE.rackX + half, minZ: lineStops[0].z - C.loadDz - 0.45, maxZ: turnZ + 0.45 },
+      { minX: LINE.rackX - half, maxX: C.outfeedX + half, minZ: turnZ - 0.45, maxZ: turnZ + 0.45 },
+      { minX: C.outfeedX - half, maxX: C.outfeedX + half, minZ: C.endZ, maxZ: turnZ + 0.45 },
+    ],
+  }
+  // Worker A on the POU side, worker B between the rack and the bench; both face the rack.
+  const workers: WorkerSpot[] = stations.filter((s) => s.id !== 'SUBASSY').flatMap((s) => [
+    { id: `${s.id}-A`, station: s.id, side: 'A' as const, x: s.rack.x - WORKER.sideA, z: s.rack.z + WORKER.stagger, yaw: Math.PI / 2 },
+    { id: `${s.id}-B`, station: s.id, side: 'B' as const, x: s.rack.x + WORKER.sideB, z: s.rack.z - WORKER.stagger, yaw: -Math.PI / 2 },
+  ])
+
   const lineRect: Rect = { minX: LINE.pouX - 1, maxX: LINE.rackX + LINE.benchOffsetX + 1, minZ: LINE.firstStationZ - 4.5, maxZ: lastZ + 4.5 }
   const subassy = stations.find((s) => s.id === 'SUBASSY')!
   const corridorRects = corridors.map(({ a, b }) => ({ minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x), minZ: Math.min(a.z, b.z), maxZ: Math.max(a.z, b.z) }))
@@ -265,7 +308,7 @@ function buildLayout(): FactoryLayout {
   const blocked: Rect[] = [
     { ...kanbanArea, minX: zones.dsvDrop.minX, maxX: zones.clsPick.maxX },
     { ...zones.dsvRacking, minX: zones.dsvRacking.minX - 2 },
-    zones.dsvStaging, lineRect, zones.mainAisle, zones.finishedStaging,
+    zones.dsvStaging, lineRect, zones.mainAisle, zones.finishedStaging, ...conveyor.rects,
     { minX: subassy.pou[0].x - 1, maxX: subassy.rack.x + 1.5, minZ: subassy.rack.z - 3, maxZ: subassy.rack.z + 3.5 },
     ...parkingSpots.map((p) => ({ minX: p.x - 1.5, maxX: p.x + 1.5, minZ: Math.min(p.z, p.junction.z) - 1.5, maxZ: Math.max(p.z, p.junction.z) + 1.5 })),
   ]
@@ -292,6 +335,8 @@ function buildLayout(): FactoryLayout {
     smallPartsRacks: [{ x: LINE.rackX - 1.5, z: lastZ + 5 }, { x: LINE.rackX + 1.5, z: lastZ + 5 }],
     kanbanBoard: { x: ZONES.handlerFloor.minX + 1.5, z: 12 },
     carts: [0, 1].map((i) => ({ x: R.spineX - 4 + i * 2.2, z: lastZ + 5 })),
+    conveyor,
+    workers,
   }
 }
 
