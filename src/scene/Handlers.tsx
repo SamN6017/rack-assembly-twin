@@ -9,8 +9,13 @@ import { PALLET } from '../layout/constants'
 import { poseAt, type HandlerTimeline } from '../sim/movementSim'
 import type { Phase } from '../sim/timeline'
 import { simClock, useSim } from '../store/simStore'
-import { useUi } from '../store/uiStore'
+import { displayLevel, useUi } from '../store/uiStore'
+import { lineOfSight, walkLabelVisible } from '../sim/labelVisibility'
 import { objectRegistry, pickHandlers } from './picking'
+
+const fwd = new THREE.Vector3()
+// A handler here stops drei re-showing the tag on its own; the frame loop decides visibility.
+const keepDisplay = () => {}
 
 /** Fork lift travel for a manual pallet jack, metres. */
 const LIFT = 0.08
@@ -62,7 +67,7 @@ function Handler({ tl }: { tl: HandlerTimeline }) {
   const loadRefs = { cartonStack: useRef<THREE.Group>(null), crate: useRef<THREE.Group>(null), wrappedRack: useRef<THREE.Group>(null) }
   const entityId = `handler:${tl.id}`
   const selected = useUi((s) => s.selected === entityId)
-  const showLabels = useUi((s) => s.layers.labels && s.tab === 'factory')
+  const tagBox = useRef<HTMLDivElement>(null)
 
   const parts = useMemo(() => ({
     jack: fallbackParts('palletJack'),
@@ -79,8 +84,8 @@ function Handler({ tl }: { tl: HandlerTimeline }) {
     return () => { objectRegistry.delete(entityId) }
   }, [entityId])
 
-  const last = useRef({ pn: '', text: '' })
-  useFrame(() => {
+  const last = useRef({ pn: '', text: '', shown: false })
+  useFrame((state) => {
     const p = poseAt(tl, simClock.t)
     const g = root.current
     if (!g) return
@@ -112,6 +117,16 @@ function Handler({ tl }: { tl: HandlerTimeline }) {
         grp.scale.y = prof && kind !== 'rack' ? prof.height : 1
       }
     }
+    // Status tags are detail-level information: shown at Detailed only, never through geometry,
+    // and in first-person only when the handler is near and in view.
+    const ui = useUi.getState()
+    const walking = ui.cameraMode === 'walk'
+    const show = ui.layers.labels && (walking || ui.tab === 'factory') && displayLevel(ui) === 'detailed' &&
+      (walking
+        ? walkLabelVisible(state.camera.position, state.camera.getWorldDirection(fwd), { x: p.x, y: 2.25, z: p.z }, last.current.shown)
+        : lineOfSight(state.camera.position, { x: p.x, y: 2.25, z: p.z }))
+    last.current.shown = show
+    if (tagBox.current && (tagBox.current.style.display === 'none') === show) tagBox.current.style.display = show ? 'block' : 'none'
     const text = `${tl.id} · ${PHASE_TEXT[p.phase]}${p.load ? ` · ${p.load.pn}` : ''}`
     if (tag.current && text !== last.current.text) {
       last.current.text = text
@@ -135,7 +150,7 @@ function Handler({ tl }: { tl: HandlerTimeline }) {
       <mesh rotation-x={-Math.PI / 2} position-y={0.015} visible={selected} material={ringMat} raycast={() => null}>
         <ringGeometry args={[1.25, 1.4, 48]} />
       </mesh>
-      <Html position={[0, 2.25, 0.6]} center zIndexRange={[25, 10]} style={{ pointerEvents: 'none', display: showLabels ? 'block' : 'none' }}>
+      <Html ref={tagBox} position={[0, 2.25, 0.6]} center zIndexRange={[25, 10]} onOcclude={keepDisplay} style={{ pointerEvents: 'none', display: 'none' }}>
         <div ref={tag} className="whitespace-nowrap rounded bg-amber-950/85 px-1.5 py-0.5 font-mono text-[10px] text-amber-100 ring-1 ring-amber-400/40" />
       </Html>
     </group>

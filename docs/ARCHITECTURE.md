@@ -249,6 +249,35 @@ Inventory transfer points: reserve on HANDLER_DISPATCHED (Kanban → in transit)
   during stops with the short station flagged, consumption only at arrival, completions matching
   the production counter, worker clearance, walkthrough collision and reachability. 71 tests.
 
+### V2.1 refinements
+
+- **Walking**: presets Slow 2.0 / Normal 3.5 / Fast 5.0 m/s, Shift doubles (sprint 7 m/s at Normal).
+  `stepWalker` (src/sim/walk.ts) normalises diagonal input and uses an exponential velocity
+  response, so distance covered is the same at any frame rate (tested at 15, 60 and 144 fps). Real
+  time only: the simulation clock and rack transport are untouched.
+- **Labels** (`src/scene/Labels.tsx`, `src/sim/labelVisibility.ts`): a visibility pass ~8×/s, no
+  scene raycasts. Occlusion is a line-of-sight slab test against the layout's solid boxes with
+  estimated heights. First-person: within 7 m (hidden beyond 8.5 m: hysteresis), inside a 50° cone,
+  and in line of sight; nearest and most central first. Overview: hidden behind geometry, off-screen
+  culled, decluttered by priority (stations, then board and line, then areas) so tags never overlap;
+  beyond 85 m the eight station tags collapse to one "Assembly line" tag; with the camera near the
+  floor, area tags only within 45 m. drei's own display toggling is disabled (`onOcclude`) so the
+  pass alone decides; labels stay mounted and never take pointer input.
+- **Display levels**, remembered per mode (walk defaults to Minimal, overview to Standard).
+  Minimal: station tags, selection, critical alerts (line-stop banner and beacons). Standard: plus
+  area and board tags. Detailed: plus each station's rack and state on its tag, rack ID tags (3D
+  sprites, naturally occluded), handler status tags, and the material-level overlay.
+- **Expanded view**: toolbar on the 3D view (camera mode, start/pause, clock, speed, display level,
+  expand/restore, browser fullscreen with in-app fallback, exit walk). Expanded hides the panels
+  but keeps them mounted; the canvas keeps its place, so nothing reinitialises and it resizes at
+  once. Walking expands automatically and restores the previous layout on exit. A details drawer
+  shows the selection; in the walkthrough, E opens the station in view.
+- **Physical Kanban board**: large header sign; cards drawn in the pockets from the digital card
+  states (`src/sim/boardCards.ts`, no separate state): cards on the replenishment loop in the
+  today-row pocket of their due time, refilled cards awaiting filing in the lower row, same colours
+  as the Kanban Board tab. Clicking the board lists its cards with due times. A building column
+  that stood through the board (V1 layout bug) is now kept clear, with a test.
+
 ## 12. Milestones
 
 1. **Factory environment and static assets** (done) — layout module, procedural asset library, building, Kanban
@@ -259,3 +288,4 @@ Inventory transfer points: reserve on HANDLER_DISPATCHED (Kanban → in transit)
 5. Scenario controls and the discrete-event engine. **Done.**
 6. KPI dashboard, scenario comparison, acceptance tests. **Done.**
 7. V2: conveyor and rack transport, rack lifecycle, 16 workers, first-person walkthrough. **Done.**
+8. V2.1: faster walking, mode-aware labels, expanded view, display levels, physical board. **Done.**

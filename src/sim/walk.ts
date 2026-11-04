@@ -59,3 +59,37 @@ export function walkMove(p: Vec2, dx: number, dz: number, radius = WALKER_RADIUS
   }
   return cur
 }
+
+/** Walking speed presets, m/s. Sprint (Shift) is twice the walk. Tuned to the ~110 x 80 m hall. */
+export const WALK_SPEEDS = { slow: 2.0, normal: 3.5, fast: 5.0 } as const
+export type WalkSpeed = keyof typeof WALK_SPEEDS
+export const SPRINT_FACTOR = 2
+
+/** How quickly velocity follows the keys (1/s): ~0.15 s to reach full speed or stop. */
+const RESPONSE = 14
+
+export interface WalkInput { forward: number; right: number; sprint: boolean }
+export interface Walker { x: number; z: number; yaw: number; vx: number; vz: number }
+
+/**
+ * Advance the walker by dt seconds of real time. Input is normalised, so diagonal movement is no
+ * faster than straight; velocity eases toward the target with an exponential response, so the
+ * same keys cover the same ground at any frame rate. Collision slides along obstacles.
+ */
+export function stepWalker(w: Walker, input: WalkInput, dt: number, speed: WalkSpeed = 'normal'): Walker {
+  const v = WALK_SPEEDS[speed] * (input.sprint ? SPRINT_FACTOR : 1)
+  // Camera looks down -Z at yaw 0: forward is (-sin, -cos), right is (cos, -sin).
+  const sin = Math.sin(w.yaw), cos = Math.cos(w.yaw)
+  let tx = -sin * input.forward + cos * input.right
+  let tz = -cos * input.forward - sin * input.right
+  const n = Math.hypot(tx, tz)
+  if (n > 0) { tx = (tx / n) * v; tz = (tz / n) * v }
+  const a = 1 - Math.exp(-RESPONSE * dt)
+  let vx = w.vx + (tx - w.vx) * a
+  let vz = w.vz + (tz - w.vz) * a
+  if (Math.hypot(vx, vz) < 0.02) return { ...w, vx: 0, vz: 0 }
+  const next = walkMove(w, vx * dt, vz * dt)
+  // Lose the velocity that ran into a wall, so the walker doesn't keep pressing against it.
+  if (dt > 0) { vx = (next.x - w.x) / dt; vz = (next.z - w.z) / dt }
+  return { ...w, x: next.x, z: next.z, vx, vz }
+}

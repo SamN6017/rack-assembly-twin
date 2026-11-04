@@ -1,19 +1,16 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { EYE_HEIGHT, WALK_SPAWN, walkMove } from '../sim/walk'
+import { EYE_HEIGHT, stepWalker, WALK_SPAWN, type WalkSpeed } from '../sim/walk'
 import { useUi } from '../store/uiStore'
 
-const WALK_SPEED = 1.4    // m/s, normal walking pace
-const FAST_SPEED = 3.2    // m/s with Shift
-const RESPONSE = 10       // 1/s: how quickly velocity follows the keys (smooth start and stop)
 const MAX_PITCH = THREE.MathUtils.degToRad(80)
 
 /** Walker position and heading, read by the walkthrough HUD. Mutable, like the sim clock. */
 export const walkState = { x: WALK_SPAWN.x, z: WALK_SPAWN.z, yaw: WALK_SPAWN.yaw }
 
-/** Mouse-look sensitivity in radians per pixel; the HUD slider changes it. */
-export const walkSettings = { sensitivity: 0.0022 }
+/** Mouse-look sensitivity (radians per pixel) and walking-speed preset; the HUD changes them. */
+export const walkSettings: { sensitivity: number; speed: WalkSpeed } = { sensitivity: 0.0022, speed: 'normal' }
 
 const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'])
 
@@ -87,27 +84,19 @@ function Walker() {
 
   useFrame((_, delta) => {
     const s = st.current
-    const dt = Math.min(delta, 0.05)
+    // Real time, capped so a stalled frame cannot fling the walker; the sim clock is untouched.
+    const dt = Math.min(delta, 0.1)
     const k = s.keys
-    const fwd = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0)
-    const side = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0)
-    const speed = k.has('ShiftLeft') || k.has('ShiftRight') ? FAST_SPEED : WALK_SPEED
-    // Camera looks down -Z at yaw 0: forward is (-sin, -cos), right is (cos, -sin).
-    const sin = Math.sin(s.yaw), cos = Math.cos(s.yaw)
-    let wx = -sin * fwd + cos * side
-    let wz = -cos * fwd - sin * side
-    const n = Math.hypot(wx, wz)
-    if (n > 0) { wx = (wx / n) * speed; wz = (wz / n) * speed }
-    const a = Math.min(1, dt * RESPONSE)
-    s.vx += (wx - s.vx) * a
-    s.vz += (wz - s.vz) * a
-    if (Math.hypot(s.vx, s.vz) > 1e-3) {
-      const next = walkMove({ x: s.x, z: s.z }, s.vx * dt, s.vz * dt)
-      // Lose the velocity that ran into a wall, so the walker doesn't keep pressing against it.
-      if (dt > 0) { s.vx = (next.x - s.x) / dt; s.vz = (next.z - s.z) / dt }
-      s.x = next.x
-      s.z = next.z
+    const input = {
+      forward: (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0),
+      right: (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0),
+      sprint: k.has('ShiftLeft') || k.has('ShiftRight'),
     }
+    const next = stepWalker(s, input, dt, walkSettings.speed)
+    s.x = next.x
+    s.z = next.z
+    s.vx = next.vx
+    s.vz = next.vz
     camera.position.set(s.x, EYE_HEIGHT, s.z)
     camera.rotation.set(s.pitch, s.yaw, 0, 'YXZ')
     walkState.x = s.x

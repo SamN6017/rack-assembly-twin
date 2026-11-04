@@ -8,6 +8,7 @@ import { KanbanBoard } from './KanbanBoard'
 import { LeftPanel } from './LeftPanel'
 import { LineBanner } from './LineBanner'
 import { WalkHud } from './WalkHud'
+import { ViewToolbar } from './ViewToolbar'
 import { RightPanel } from './RightPanel'
 import { SimulatorPanel } from './SimulatorPanel'
 
@@ -68,22 +69,28 @@ function useShortcuts() {
 export function App() {
   useShortcuts()
   const tab = useUi((s) => s.tab)
+  const expanded = useUi((s) => s.expanded)
+  // Expanded: the 3D view takes the whole window. The panels stay mounted (hidden), and the canvas
+  // keeps its place in the tree, so nothing re-initialises when the layout is restored.
+  const rows = tab === 'compare' ? 'grid-rows-[48px_minmax(0,1fr)_minmax(0,62%)]' : tab === 'kanban' || tab === 'simulator' ? 'grid-rows-[48px_minmax(0,1fr)_minmax(0,54%)]' : 'grid-rows-[48px_minmax(0,1fr)_300px]'
+  const hide = expanded ? 'hidden' : ''
   return (
-    <div className={`grid h-full grid-cols-[288px_minmax(0,1fr)_320px] bg-neutral-950 ${tab === 'compare' ? 'grid-rows-[48px_minmax(0,1fr)_minmax(0,62%)]' : tab === 'kanban' || tab === 'simulator' ? 'grid-rows-[48px_minmax(0,1fr)_minmax(0,54%)]' : 'grid-rows-[48px_minmax(0,1fr)_300px]'}`}>
-      <TopNav />
-      <aside className="row-span-2 overflow-y-auto border-r border-white/10 bg-[#111214]">
+    <div className={`grid h-full bg-neutral-950 ${expanded ? 'grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]' : `grid-cols-[288px_minmax(0,1fr)_320px] ${rows}`}`}>
+      <div className={`col-span-3 ${hide}`}><TopNav /></div>
+      <aside className={`row-span-2 overflow-y-auto border-r border-white/10 bg-[#111214] ${hide}`}>
         <LeftPanel />
       </aside>
       <main className="relative min-h-0">
         <FactoryScene />
-        {tab === 'assets' && <AssetLibrary />}
+        {tab === 'assets' && !expanded && <AssetLibrary />}
         <LineBanner />
         <WalkHud />
+        <ViewToolbar />
       </main>
-      <aside className="overflow-y-auto border-l border-white/10 bg-[#111214]">
+      <aside className={`overflow-y-auto border-l border-white/10 bg-[#111214] ${hide}`}>
         <RightPanel />
       </aside>
-      <footer className="col-span-2 min-h-0 border-t border-white/10 bg-[#111214]">
+      <footer className={`col-span-2 min-h-0 border-t border-white/10 bg-[#111214] ${hide}`}>
         {tab === 'kanban' ? <KanbanBoard /> : tab === 'simulator' ? <SimulatorPanel /> : tab === 'compare' ? <CompareView /> : <BottomPanel />}
       </footer>
     </div>

@@ -90,4 +90,9 @@ describe('Building', () => {
       for (const r of rects) expect(overlaps(col, r)).toBe(false)
     }
   })
+
+  it('keeps columns off the Kanban board', () => {
+    const b = LAYOUT.kanbanBoard
+    for (const c of LAYOUT.columns) expect(Math.abs(c.x - b.x) < 0.9 && Math.abs(c.z - b.z) < 2.2, `column at ${c.x}, ${c.z}`).toBe(false)
+  })
 })

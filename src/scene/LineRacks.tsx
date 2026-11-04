@@ -7,7 +7,8 @@ import { MATERIALS } from '../assets/materials'
 import type { RenderPart } from '../assets/loadAsset'
 import { N_STATIONS, racksAt, type RackView } from '../sim/assemblyLine'
 import { simClock, useSim } from '../store/simStore'
-import { useUi } from '../store/uiStore'
+import { displayLevel, useUi } from '../store/uiStore'
+import { rackTagTexture } from './labelTexture'
 import { objectRegistry, pickHandlers } from './picking'
 
 const toRender = (b: GeoBuilder): RenderPart[] => b.build().map((p) => ({ geometry: p.geometry, material: MATERIALS[p.mat] }))
@@ -33,6 +34,7 @@ const ringMat = new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: tru
 const signature = (vs: RackView[]) => vs.map((v) => `${v.rack}:${v.stationsDone}:${v.y > 0 ? 1 : 0}`).join('|')
 
 const Rack = memo(function Rack({ rack, done, onCarrier, start, register }: { rack: number; done: number; onCarrier: boolean; start: RackView; register: (rack: number, g: THREE.Group | null) => void }) {
+  const tag = useMemo(() => new THREE.SpriteMaterial({ map: rackTagTexture(start.id, start.model), depthWrite: false }), [start.id, start.model])
   const ref = useRef<THREE.Group>(null)
   // Place a newly mounted rack before its first frame; after that the frame loop moves it.
   useLayoutEffect(() => { ref.current?.position.set(start.x, start.y, start.z) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -52,6 +54,8 @@ const Rack = memo(function Rack({ rack, done, onCarrier, start, register }: { ra
         {onCarrier && carrier.map((p, i) => <mesh key={`c${i}`} geometry={p.geometry} material={p.material} receiveShadow />)}
       </group>
       {selected && <mesh geometry={ring} material={ringMat} position={[0, 0.02, 0]} raycast={() => null} />}
+      {/* Rack ID tag (Detailed level). A real 3D sprite: anything in front of it hides it. */}
+      <sprite name="rack-tag" material={tag} position={[0, 2.75, 0]} scale={[0.75, 0.28, 1]} visible={false} raycast={() => null} />
     </group>
   )
 })
@@ -71,14 +75,24 @@ export function LineRacks() {
     else groups.current.delete(rack)
   }, [])
 
-  useFrame(() => {
+  useFrame((state) => {
     const vs = racksAt(result, simClock.t)
     const s = signature(vs)
     if (s !== sig.current) {
       sig.current = s
       setList(vs)
     }
-    for (const v of vs) groups.current.get(v.rack)?.position.set(v.x, v.y, v.z)
+    // Rack tags: Detailed level only; while walking, only racks within 10 m.
+    const ui = useUi.getState()
+    const tags = displayLevel(ui) === 'detailed'
+    const walking = ui.cameraMode === 'walk'
+    for (const v of vs) {
+      const g = groups.current.get(v.rack)
+      if (!g) continue
+      g.position.set(v.x, v.y, v.z)
+      const sprite = g.getObjectByName('rack-tag')
+      if (sprite) sprite.visible = tags && (!walking || state.camera.position.distanceTo(g.position) < 10)
+    }
   })
 
   return (

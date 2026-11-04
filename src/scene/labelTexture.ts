@@ -74,3 +74,34 @@ export function stationSignTexture(id: string, caption: string, placeholder: boo
   cache.set(key, tex)
   return tex
 }
+
+/** Rack ID tag for the Detailed display level: dark plate, white monospace id, model underneath. */
+export function rackTagTexture(id: string, model: string): THREE.CanvasTexture {
+  const key = `rack:${id}:${model}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const w = 256, h = 96
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = 'rgba(12,18,28,0.88)'
+  ctx.beginPath()
+  ctx.roundRect(2, 2, w - 4, h - 4, 14)
+  ctx.fill()
+  ctx.strokeStyle = model === 'Bloom' ? '#2e9e4a' : '#9ca3af'
+  ctx.lineWidth = 4
+  ctx.stroke()
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = 'bold 44px ui-monospace, Menlo, monospace'
+  ctx.fillText(id, w / 2, 40)
+  ctx.font = '22px "Helvetica Neue", Arial, sans-serif'
+  ctx.fillStyle = '#cbd5e1'
+  ctx.fillText(model, w / 2, 76)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  cache.set(key, tex)
+  return tex
+}

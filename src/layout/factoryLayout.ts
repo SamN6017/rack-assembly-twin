@@ -312,6 +312,9 @@ function buildLayout(): FactoryLayout {
     { minX: subassy.pou[0].x - 1, maxX: subassy.rack.x + 1.5, minZ: subassy.rack.z - 3, maxZ: subassy.rack.z + 3.5 },
     ...parkingSpots.map((p) => ({ minX: p.x - 1.5, maxX: p.x + 1.5, minZ: Math.min(p.z, p.junction.z) - 1.5, maxZ: Math.max(p.z, p.junction.z) + 1.5 })),
   ]
+  // Keep the Kanban board, 2-bin shelving and carts clear of columns too.
+  const board = { x: ZONES.handlerFloor.minX + 1.5, z: 12 }
+  blocked.push({ minX: board.x - 0.6, maxX: board.x + 0.6, minZ: board.z - 2.2, maxZ: board.z + 2.2 })
   const columns: Vec2[] = []
   for (let x = BUILDING.minX + 4; x < BUILDING.maxX - 1; x += BUILDING.columnPitchX) {
     for (let z = BUILDING.minZ + 7.5; z < BUILDING.maxZ - 1; z += BUILDING.columnPitchZ) {
@@ -333,7 +336,7 @@ function buildLayout(): FactoryLayout {
     stagingSlots: Array.from({ length: STAGING.slots }, (_, i) => ({ x: STAGING.x, z: STAGING.firstZ + i * STAGING.pitch })),
     parkingSpots,
     smallPartsRacks: [{ x: LINE.rackX - 1.5, z: lastZ + 5 }, { x: LINE.rackX + 1.5, z: lastZ + 5 }],
-    kanbanBoard: { x: ZONES.handlerFloor.minX + 1.5, z: 12 },
+    kanbanBoard: board,
     carts: [0, 1].map((i) => ({ x: R.spineX - 4 + i * 2.2, z: lastZ + 5 })),
     conveyor,
     workers,

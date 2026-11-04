@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { LINE_STATIONS, RACK_STATE_LABEL, stationAt } from '../sim/assemblyLine'
 import { walkSettings, walkState } from '../scene/FirstPerson'
 import { simClock, useSim } from '../store/simStore'
-import { useUi } from '../store/uiStore'
+import { displayLevel, useUi } from '../store/uiStore'
+import { WALK_SPEEDS, type WalkSpeed } from '../sim/walk'
 import { dur } from './kanbanUi'
 
 const NEAR = 5
@@ -18,6 +19,8 @@ export function WalkHud() {
   const result = useSim((s) => s.result)
   const [, tick] = useState(0)
   const [sens, setSens] = useState(walkSettings.sensitivity)
+  const [speed, setSpeed] = useState<WalkSpeed>(walkSettings.speed)
+  const level = useUi(displayLevel)
   useEffect(() => {
     if (mode !== 'walk') return
     const id = setInterval(() => tick((n) => n + 1), 250)
@@ -45,13 +48,24 @@ export function WalkHud() {
             <span className="text-[13px] font-semibold text-neutral-100">{st.id}</span>
             <span className={STATE_TONE[st.state]}>{STATE_TEXT[st.state]}</span>
           </div>
-          {st.rack && <div className="mt-0.5 flex justify-between font-mono text-[11px] text-neutral-300"><span>{st.rack.id} · {st.rack.model}</span><span>{RACK_STATE_LABEL[st.rack.state]}</span></div>}
-          {st.remaining !== null && <div className="font-mono text-[11px] text-neutral-400">{dur(st.remaining)} left in the assembly window (placeholder timing)</div>}
+          {level !== 'minimal' && st.rack && <div className="mt-0.5 flex justify-between font-mono text-[11px] text-neutral-300"><span>{st.rack.id} · {st.rack.model}</span>{level === 'detailed' && <span>{RACK_STATE_LABEL[st.rack.state]}</span>}</div>}
+          {level === 'detailed' && st.remaining !== null && <div className="font-mono text-[11px] text-neutral-400">{dur(st.remaining)} left in the assembly window (placeholder timing)</div>}
           {st.short.length > 0 && <div className="text-[11px] text-red-300">Waiting for {st.short.map((k) => k.split(':')[1]).join(', ')}</div>}
+          <div className="mt-0.5 text-[10px] text-neutral-500">E · station details</div>
         </div>
       )}
       <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-md bg-black/70 px-3 py-1.5 text-[11px] text-neutral-300 ring-1 ring-white/15 backdrop-blur">
-        <span>{locked ? 'WASD walk · Shift faster · mouse look · Esc release mouse' : 'Click the view to look around and walk'}</span>
+        <span>{locked ? 'WASD walk · Shift sprint · mouse look · E details · Esc release mouse' : 'Click the view to look around · WASD walk · Shift sprint'}</span>
+        <label className="flex items-center gap-1 text-neutral-400" title="Walking speed (Shift doubles it)">
+          speed
+          <select
+            value={speed}
+            onChange={(e) => { walkSettings.speed = e.target.value as WalkSpeed; setSpeed(walkSettings.speed) }}
+            className="rounded bg-neutral-900 px-1 py-px text-neutral-100 ring-1 ring-white/15"
+          >
+            {(Object.keys(WALK_SPEEDS) as WalkSpeed[]).map((k) => <option key={k} value={k}>{k[0].toUpperCase() + k.slice(1)} · {WALK_SPEEDS[k]} m/s</option>)}
+          </select>
+        </label>
         <label className="flex items-center gap-1 text-neutral-400" title="Mouse sensitivity">
           look
           <input

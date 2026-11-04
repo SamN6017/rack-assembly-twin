@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { getPart } from '../data/parts'
 import { LAYOUT } from '../layout/factoryLayout'
 import { useSim } from '../store/simStore'
-import { useUi } from '../store/uiStore'
+import { displayLevel, useUi } from '../store/uiStore'
 import { STATE_STYLE } from '../ui/kanbanUi'
 
 const PLATE_Y = 0.008
@@ -27,7 +27,8 @@ const POUS = LAYOUT.stations.flatMap((s) => s.pou.map((p) => ({ key: `${s.id}:${
  * Purely visual; the meshes carry no pointer handlers, so picking goes through to the pallets.
  */
 export function Overlays() {
-  const on = useUi((s) => s.layers.overlays)
+  // Material levels: on with the layer, and always at the Detailed display level.
+  const on = useUi((s) => s.layers.overlays || displayLevel(s) === 'detailed')
   const snapshot = useSim((s) => s.snapshot)
   const plates = useRef<THREE.InstancedMesh>(null)
   const flags = useRef<THREE.InstancedMesh>(null)

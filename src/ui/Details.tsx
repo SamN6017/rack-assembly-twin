@@ -15,7 +15,7 @@ import { useUi } from '../store/uiStore'
 import { AssetPreview, type PreviewItem } from './AssetPreview'
 import { ConfidenceBadge, Row, Section } from './common'
 import { LiveStock } from './kanbanUi'
-import { RackInfo, StationAssembly } from './AssemblyDetails'
+import { BoardPanel, RackInfo, StationAssembly } from './AssemblyDetails'
 import { rackId } from '../sim/movementSim'
 
 const KIND_LABEL: Record<Entity['kind'], string> = {
@@ -279,6 +279,7 @@ export function Details({ id }: { id: string }) {
       {entity.kind === 'lineRack' && <RackDetails stage={LINE_IDS.indexOf(entity.stationId!)} />}
       {entity.kind === 'assemblyRack' && <RackInfo rackNo={entity.rackNo!} />}
       {entity.kind === 'finishedRack' && <RackDetails stage={LINE_IDS.length - 1} />}
+      {entity.kind === 'equipment' && entity.assetId === 'kanbanBoard' && <BoardPanel />}
       {entity.kind === 'equipment' && <EquipmentDetails entity={entity} />}
       {entity.kind === 'dsvStock' && (
         <Section title="DSV stock">

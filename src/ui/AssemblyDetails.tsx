@@ -3,7 +3,8 @@ import { LINE_STATIONS, partLabel, RACK_STATE_LABEL, rackAt, rackComponents, sta
 import { formatClock, simClock, useSim } from '../store/simStore'
 import { useUi } from '../store/uiStore'
 import { Row, Section } from './common'
-import { dur } from './kanbanUi'
+import { DueTag, dur, openCycle, StateChip } from './kanbanUi'
+import { boardCards } from '../sim/boardCards'
 import { useSimTime } from './useSimTime'
 
 const WORKER_STATUS: Record<StationState, string> = {
@@ -113,6 +114,49 @@ export function StationAssembly({ stationId }: { stationId: string }) {
         })}
       </ul>
       {st.short.length > 0 && <p className="mt-1 text-[11px] text-red-300">Missing: {st.short.map((key) => getPart(key.split(':')[1]).description).join(', ')}. The line waits until the pallet arrives.</p>}
+    </Section>
+  )
+}
+
+/** Physical Kanban board: the cards on it, read from the digital card states (no separate state). */
+export function BoardPanel() {
+  useSimTime(500)
+  const t = simClock.t
+  const result = useSim((s) => s.result)
+  const snapshot = useSim((s) => s.snapshot)
+  const ui = useUi()
+  const cards = boardCards(result, snapshot, t)
+  const today = cards.filter((c) => c.row === 'today').sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0))
+  const filed = cards.filter((c) => c.row === 'filed')
+  const slotLabel = (p: number) => `${String(p * 2).padStart(2, '0')}–${String(p * 2 + 2).padStart(2, '0')} h`
+  return (
+    <Section title="Board" right={<button onClick={() => { ui.setExpanded(false); ui.setTab('kanban') }} className="rounded px-1.5 py-0.5 text-[11px] text-sky-300 ring-1 ring-sky-500/40 hover:bg-sky-500/10">Open Kanban Board tab</button>}>
+      <p className="mb-1.5 text-[11px] leading-relaxed text-neutral-500">Top row: today, 12 two-hour pockets; each card out on the replenishment loop sits in the pocket of its due time. Lower row: refilled Kanbans whose card DSV files at the next inspection. Colours match the Kanban Board tab.</p>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500">Today row ({today.length})</div>
+      {today.length === 0 && <p className="text-[12px] text-neutral-500">No cards out: every Kanban is full or in use.</p>}
+      <ul className="mt-0.5 space-y-1">
+        {today.map((c) => {
+          const [pn, k] = c.slotId.split('#')
+          const cyc = openCycle(result, c.slotId, t)
+          return (
+            <li key={c.slotId} className="flex items-center justify-between gap-2 text-[12px]">
+              <button onClick={() => ui.select(`kanban:${c.slotId}:0`, { focus: true })} className="truncate text-left text-neutral-200 hover:underline" title={pn}>
+                {getPart(pn).description} <span className="text-neutral-500">K{Number(k) + 1}</span>
+              </button>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <span className="font-mono text-[10px] text-neutral-500">{slotLabel(c.pocket)}</span>
+                <StateChip state={c.state} />
+                {cyc && <DueTag cycle={cyc} t={t} />}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="mt-2 text-[10px] uppercase tracking-wider text-neutral-500">To be filed ({filed.length})</div>
+      <ul className="mt-0.5 space-y-1">
+        {filed.map((c) => <li key={c.slotId} className="flex justify-between text-[12px] text-neutral-300"><span>{getPart(c.slotId.split('#')[0]).description} K{Number(c.slotId.split('#')[1]) + 1}</span><StateChip state={c.state} /></li>)}
+      </ul>
+      <p className="mt-2 text-[11px] text-neutral-500">Next inspection {formatClock(Math.floor(t / (result.config.inspectionIntervalMin * 60) + 1) * result.config.inspectionIntervalMin * 60)} (every {result.config.inspectionIntervalMin} min).</p>
     </Section>
   )
 }

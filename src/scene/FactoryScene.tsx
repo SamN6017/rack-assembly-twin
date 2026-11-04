@@ -10,6 +10,7 @@ import { FirstPerson } from './FirstPerson'
 import { AssemblyLine } from './AssemblyLine'
 import { LineRacks } from './LineRacks'
 import { Workers } from './Workers'
+import { BoardCards } from './BoardCards'
 import { DsvArea } from './DsvArea'
 import { Equipment } from './Equipment'
 import { FloorMarkings } from './FloorMarkings'
@@ -69,6 +70,8 @@ function Lights() {
 
 const CAMERA = { position: VIEWS.iso.slice(0, 3) as [number, number, number], fov: 42, near: 0.1, far: 700 }
 const GL = { antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }
+// Resize the drawing buffer as soon as the layout changes (expand / restore), not after a pause.
+const RESIZE = { scroll: false, debounce: { scroll: 50, resize: 0 } }
 
 /**
  * Memoised with stable props: if the Canvas re-renders, R3F reconnects its event target and every
@@ -81,6 +84,7 @@ export const FactoryScene = memo(function FactoryScene() {
       dpr={[1, 2]}
       camera={CAMERA}
       gl={GL}
+      resize={RESIZE}
       onPointerDown={onPointerDown}
       onPointerMissed={onPointerMissed}
     >
@@ -96,6 +100,7 @@ export const FactoryScene = memo(function FactoryScene() {
       <LineRacks />
       <Workers />
       <Equipment />
+      <BoardCards />
       <StagingLane />
       <Handlers />
       <Overlays />
