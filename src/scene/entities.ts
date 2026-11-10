@@ -133,7 +133,7 @@ function resolve(id: string): Entity | null {
       const zs = [st.rack.z, st.bench.z, ...st.pou.map((p) => p.z)]
       const minX = Math.min(...xs) - 0.8, maxX = Math.max(...xs) + 0.8
       const minZ = Math.min(...zs) - 1, maxZ = Math.max(...zs) + 1
-      return { id, kind: 'station', label: st.id === 'SUBASSY' ? 'Sub-assembly' : `Workstation ${st.id}`, bounds: { x: (minX + maxX) / 2, y: 1.1, z: (minZ + maxZ) / 2, w: maxX - minX, h: 2.3, d: maxZ - minZ }, stationId: st.id }
+      return { id, kind: 'station', label: st.label, bounds: { x: (minX + maxX) / 2, y: 1.1, z: (minZ + maxZ) / 2, w: maxX - minX, h: 2.3, d: maxZ - minZ }, stationId: st.id }
     }
     case 'finished': {
       const p = LAYOUT.finishedRackSpots[Number(arg)]

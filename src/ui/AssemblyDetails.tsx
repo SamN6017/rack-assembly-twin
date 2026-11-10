@@ -2,6 +2,7 @@ import { getPart } from '../data/parts'
 import { LINE_STATIONS, partLabel, RACK_STATE_LABEL, rackAt, rackComponents, stationAt, stationParts, type StationState } from '../sim/assemblyLine'
 import { formatClock, simClock, useSim } from '../store/simStore'
 import { useUi } from '../store/uiStore'
+import { stationLabel } from '../layout/factoryLayout'
 import { Row, Section } from './common'
 import { DueTag, dur, openCycle, StateChip } from './kanbanUi'
 import { boardCards } from '../sim/boardCards'
@@ -32,7 +33,7 @@ export function RackInfo({ rackNo }: { rackNo: number }) {
   const v = rackAt(result, rackNo, t)
   if (!v) return <Section title="GPU rack"><p className="text-[12px] text-neutral-500">This rack is no longer on the floor (shipped from staging) or not built yet.</p></Section>
   const { installed, pending } = rackComponents(v)
-  const where = v.station !== null ? LINE_STATIONS[v.station].id : v.state === 'COMPLETED' ? 'Finished-rack staging' : 'Outfeed to staging'
+  const where = v.station !== null ? LINE_STATIONS[v.station].label : v.state === 'COMPLETED' ? 'Finished-rack staging' : 'Outfeed to staging'
   const id = `linerack:${rackNo}`
   return (
     <>
@@ -40,15 +41,15 @@ export function RackInfo({ rackNo }: { rackNo: number }) {
         <Row label="Rack ID" value={v.id} />
         <Row label="Model" value={v.model} confidence="placeholder" />
         <Row label="Current location" value={where} />
-        <Row label="Status" value={<span className={v.state === 'COMPLETED' || v.state === 'WS8_COMPLETE' ? 'text-emerald-300' : v.state === 'WAITING_FOR_TRANSFER' ? 'text-amber-300' : ''}>{RACK_STATE_LABEL[v.state]}</span>} />
+        <Row label="Status" value={<span className={v.state === 'COMPLETED' || v.state === 'PACKOUT_COMPLETE' ? 'text-emerald-300' : v.state === 'WAITING_FOR_TRANSFER' ? 'text-amber-300' : ''}>{RACK_STATE_LABEL[v.state]}</span>} />
         <Row label="Assembly progress" value={<><Bar value={v.progress} /> {Math.round(v.progress * 100)}%</>} />
         <Row label="At this station" value={v.atStationSince !== null ? dur(t - v.atStationSince) : '—'} />
         <Row label="Total elapsed" value={v.createdAt !== null ? dur((v.completedAt ?? t) - v.createdAt) : `${dur(t)}+ (on line at shift start)`} />
         {v.completedAt !== null && <Row label="Completed at" value={formatClock(v.completedAt)} />}
-        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">Model drawn from the {Math.round(result.config.bloomShare * 100)}% Bloom mix (placeholder). Progress counts finished stations equally, plus the share of the current assembly window; WS6 is a placeholder step.</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">Model drawn from the {Math.round(result.config.bloomShare * 100)}% Bloom mix (placeholder). Progress counts finished stations equally, plus the share of the current assembly window.</p>
       </Section>
       <Section title={`Installed (${installed.length} station${installed.length === 1 ? '' : 's'})`}>
-        {installed.length === 0 && <p className="text-[12px] text-neutral-500">Nothing yet: WS1 is still working on the base rack.</p>}
+        {installed.length === 0 && <p className="text-[12px] text-neutral-500">Nothing yet: station 1 is still building the chassis.</p>}
         <StationList rows={installed} done />
       </Section>
       <Section title={`Pending (${pending.length})`}>
@@ -64,9 +65,9 @@ function StationList({ rows, done }: { rows: { station: string; parts: ReturnTyp
     <ul className="space-y-1.5">
       {rows.map((r) => (
         <li key={r.station} className="text-[12px]">
-          <span className={`font-mono ${done ? 'text-emerald-300' : 'text-neutral-400'}`}>{done ? '✓' : '○'} {r.station}</span>
+          <span className={done ? 'text-emerald-300' : 'text-neutral-400'}>{done ? '✓' : '○'} {stationLabel(r.station)}</span>
           <span className="ml-2 text-neutral-300">
-            {r.station === 'WS6' ? <span className="text-neutral-500">operation not in sources (placeholder)</span> : r.parts.length ? r.parts.map((p) => partLabel(p.pn)).join(', ') : <span className="text-neutral-500">no pallet parts listed</span>}
+            {r.parts.length ? r.parts.map((p) => partLabel(p.pn)).join(', ') : <span className="text-neutral-500">{r.station === 'ST4' ? 'test only, no parts' : 'no pallet parts listed'}</span>}
           </span>
         </li>
       ))}
@@ -98,11 +99,10 @@ export function StationAssembly({ stationId }: { stationId: string }) {
       <Row label="Worker A (POU side)" value={<span className="font-sans text-[12px]">{WORKER_STATUS[st.state]}</span>} />
       <Row label="Worker B (bench side)" value={<span className="font-sans text-[12px]">{WORKER_STATUS[st.state]}</span>} />
       <div className="mt-1.5 text-[10px] uppercase tracking-wider text-neutral-500">Required materials{model ? ` (${model})` : ''}</div>
-      {stationId === 'WS6' && <p className="text-[11px] text-neutral-500">WS6's operation is not in the photos or sheet. It is kept as a placeholder step with no parts until process information is provided.</p>}
-      {parts.length === 0 && stationId !== 'WS6' && <p className="text-[11px] text-neutral-500">No pallet parts for this model.</p>}
+      {parts.length === 0 && <p className="text-[11px] text-neutral-500">{LINE_STATIONS[k].steps.length === 0 ? 'Testing fits no parts: the sheet has no rows for it. Its time uses the takt (placeholder).' : 'No pallet parts for this model.'}</p>}
       <ul className="mt-0.5 space-y-0.5">
         {parts.map((p) => {
-          const key = `${p.workstation?.split('&')[0].trim() === 'SUBASSY' ? 'SUBASSY' : stationId}:${p.pn}`
+          const key = `${p.station === 'SUBASSY' ? 'SUBASSY' : stationId}:${p.pn}`
           const have = pou.get(key)
           const missing = st.short.includes(key)
           return (

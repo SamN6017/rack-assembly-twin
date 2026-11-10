@@ -59,7 +59,7 @@
   },
 
   "workstations": {
-    "$comment": "From BOM 'workstation' column. WS6 and anything after WS8 not visible in photos.",
+    "$comment": "From BOM 'workstation' column. These are assembly steps, not physical stations: the sheet uses WS1-WS5, WS7, WS8 and WS10 (no WS6 or WS9). The physical line is in line_stations.",
     "items": [
       { "id": "WS1", "parts": ["Base Rack", "Large Busbar"], "confidence": "verified" },
       { "id": "WS2", "parts": ["Left/Right Small Busbar", "Left/Right Rails"], "confidence": "verified" },
@@ -67,11 +67,22 @@
       { "id": "SUBASSY", "parts": ["M Shelf", "Sub-Assembly Busbar", "Warning Label", "Screws"], "note": "Builds M Shelf sub-assembly delivered to WS4", "confidence": "verified" },
       { "id": "WS4", "parts": ["Battery Water Pan", "Drain Tube", "Adapter Plates", "M Shelf sub-assembly"], "confidence": "verified" },
       { "id": "WS5", "parts": ["T Shelf"], "confidence": "verified" },
-      { "id": "WS6", "parts": [], "confidence": "placeholder" },
       { "id": "WS7", "parts": ["Left/Right Bottom Drain Module", "Left/Right Drain Module (shared with WS8)"], "confidence": "verified" },
-      { "id": "WS8", "parts": ["Left/Right Drain Module (shared with WS7)", "Center Rack Cable Manager"], "confidence": "verified" }
+      { "id": "WS8", "parts": ["Left/Right Drain Module (shared with WS7)", "Center Rack Cable Manager"], "confidence": "verified" },
+      { "id": "WS10", "parts": ["Right/Left/Front Shipping Bracket", "Bolt", "Nut", "Flat/Split Washer"], "confidence": "verified" }
     ],
     "cycle_times": { "value": null, "confidence": "placeholder" }
+  },
+
+  "line_stations": {
+    "$comment": "Physical assembly-line stations, as stated by the user on 2026-11-10 (names verified). Which sheet steps each station performs is inferred from the part types, so the mapping is estimated.",
+    "items": [
+      { "id": "ST1", "name": "Chassis", "steps": ["WS1", "WS2", "WS3"], "confidence": "estimated" },
+      { "id": "ST2", "name": "Blades / cassettes", "steps": ["WS4", "WS5"], "fed_by": "SUBASSY", "confidence": "estimated" },
+      { "id": "ST3", "name": "Wiring", "steps": ["WS7", "WS8"], "confidence": "estimated", "note": "Drain modules are cooling plumbing; placed here because the sheet lists them at WS7/WS8" },
+      { "id": "ST4", "name": "Testing", "steps": [], "confidence": "estimated", "note": "No sheet rows. Possibly the missing WS6/WS9 (guess)." },
+      { "id": "ST5", "name": "Packout", "steps": ["WS10"], "confidence": "estimated" }
+    ]
   },
 
   "kanban_parts": {
@@ -104,9 +115,9 @@
       { "pn": "1199546", "description": "Left Drain Module", "models": ["Yawn", "Bloom"], "workstation": "WS7 & WS8", "qty_per_rack": 14, "qty_per_pallet": 1680, "kanban_pallets": 1, "hours_per_kanban": 22.5, "confidence": "verified" },
       { "pn": "1200637", "description": "Right Drain Module", "models": ["Yawn", "Bloom"], "workstation": "WS7 & WS8", "qty_per_rack": 14, "qty_per_pallet": 1680, "kanban_pallets": 1, "hours_per_kanban": 22.5, "confidence": "verified" },
       { "pn": "1206264", "description": "Center Rack Cable Manager", "models": ["Yawn", "Bloom"], "workstation": "WS8", "qty_per_rack": 7, "qty_per_pallet": 144, "kanban_pallets": 2, "hours_per_kanban": 7.714, "confidence": "verified" },
-      { "pn": "1231956", "description": "Right Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": null, "qty_per_rack": null, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 7.875, "confidence": "estimated", "note": "Kanban tab only; BOM row beyond photo" },
-      { "pn": "1231954", "description": "Left Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": null, "qty_per_rack": null, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 7.875, "confidence": "estimated" },
-      { "pn": "1231955", "description": "Front Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": null, "qty_per_rack": null, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 4.5, "confidence": "estimated" }
+      { "pn": "1231956", "description": "Right Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": "WS10", "qty_per_rack": 2, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 7.875, "confidence": "verified", "note": "Workstation and qty per rack from BOM rows 68/73/74; qty per pallet not visible" },
+      { "pn": "1231954", "description": "Left Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": "WS10", "qty_per_rack": 2, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 7.875, "confidence": "verified", "note": "Workstation and qty per rack from BOM rows 68/73/74; qty per pallet not visible" },
+      { "pn": "1231955", "description": "Front Shipping Bracket", "models": ["Yawn", "Bloom"], "workstation": "WS10", "qty_per_rack": 2, "qty_per_pallet": null, "kanban_pallets": 1, "hours_per_kanban": 4.5, "confidence": "verified", "note": "Workstation and qty per rack from BOM rows 68/73/74; qty per pallet not visible" }
     ]
   },
 
@@ -176,7 +187,7 @@
 
   "still_missing": [
     "Workstation cycle times",
-    "WS6 contents and BOM rows after row 55 (shipping bracket qty/workstation)",
+    "Which sheet steps each physical station performs (mapping inferred); test-station process and time; qty per pallet for shipping brackets",
     "DSV preparation time (only total 2 h lead time known)",
     "Material handler count, cart capacity, travel speed",
     "Floor dimensions and station spacing",

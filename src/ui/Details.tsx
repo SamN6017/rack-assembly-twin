@@ -6,7 +6,7 @@ import { MATERIALS } from '../assets/materials'
 import { COMPONENTS, stationParts } from '../data/components'
 import { getPart, modelTab, PLANNING_BASIS } from '../data/parts'
 import { PALLET, SERVER_RACK } from '../layout/constants'
-import { LAYOUT } from '../layout/factoryLayout'
+import { LAYOUT, stationLabel } from '../layout/factoryLayout'
 import { poseAt } from '../sim/movementSim'
 import { formatClock, useSim } from '../store/simStore'
 import { useSimTime } from './useSimTime'
@@ -16,10 +16,10 @@ import { AssetPreview, type PreviewItem } from './AssetPreview'
 import { ConfidenceBadge, Row, Section } from './common'
 import { LiveStock } from './kanbanUi'
 import { BoardPanel, RackInfo, StationAssembly } from './AssemblyDetails'
-import { rackId } from '../sim/movementSim'
+import { rackId, SUBASSY_FEEDS } from '../sim/movementSim'
 
 const KIND_LABEL: Record<Entity['kind'], string> = {
-  kanbanPallet: 'Kanban pallet', pouPallet: 'Point-of-use pallet', lineRack: 'Rack on line', station: 'Workstation',
+  kanbanPallet: 'Kanban pallet', pouPallet: 'Point-of-use pallet', lineRack: 'Rack on line', station: 'Station',
   finishedRack: 'Finished rack', equipment: 'Equipment', dsvStock: 'DSV stock',
   stagePallet: 'Staged replenishment pallet', handler: 'Material handler', assemblyRack: 'GPU rack',
 }
@@ -122,7 +122,7 @@ function StationDetails({ entity }: { entity: Entity }) {
   const install = INSTALL_SEQUENCE.find((s) => s.station === id)
   const pou = useSim((s) => s.snapshot.pou)
   const backorder = useSim((s) => s.snapshot.backorder)
-  const here = useSim((s) => s.snapshot.atStation.get(id === 'SUBASSY' ? 'WS4' : id))
+  const here = useSim((s) => s.snapshot.atStation.get(id === 'SUBASSY' ? SUBASSY_FEEDS : id))
   const line = useSim((s) => s.snapshot.line)
   const waiting = line.blocked ? line.keys.filter((k) => k.startsWith(`${id}:`)) : []
   return (
@@ -136,13 +136,15 @@ function StationDetails({ entity }: { entity: Entity }) {
       )}
       {id !== 'SUBASSY' && <StationAssembly stationId={id} />}
       <Section title="Station">
-        <Row label="Station" value={id} confidence={st.confidence} />
+        <Row label="Station" value={st.label} confidence={st.confidence} />
+        {id !== 'SUBASSY' && <Row label="Sheet steps" value={st.steps.length ? st.steps.join(', ') : 'none (no sheet rows)'} confidence={st.confidence} />}
+        {id === 'SUBASSY' && <Row label="Feeds" value={stationLabel(SUBASSY_FEEDS)} confidence="estimated" />}
         <Row label="Cycle time" value="—" confidence="placeholder" />
         {install && <Row label="Installs" value={<span className="max-w-[170px] text-right font-sans text-[12px]">{install.items}</span>} />}
         {id === 'SUBASSY' && here && <Row label="Building for" value={`${rackId(here.rack)} · ${here.model}`} confidence="placeholder" />}
       </Section>
       <Section title={`Pallet parts consumed (${kanban.length})`}>
-        {kanban.length === 0 && <p className="text-[12px] text-neutral-500">{id === 'WS6' ? 'WS6 content is not visible in the photos.' : 'None'}</p>}
+        {kanban.length === 0 && <p className="text-[12px] text-neutral-500">{st.steps.length === 0 && id !== 'SUBASSY' ? 'Testing fits no parts: the sheet has no rows for it.' : 'None'}</p>}
         <ul className="space-y-1">
           {kanban.map((p) => {
             const staged = st.pou.some((x) => x.pn === p.pn)
@@ -184,7 +186,7 @@ function RackDetails({ stage }: { stage: number }) {
       <Section title="Installed so far">
         <ol className="space-y-1">
           {INSTALL_SEQUENCE.slice(0, stage + 1).map((s) => (
-            <li key={s.station} className="flex gap-2 text-[12px]"><span className="w-9 font-mono text-sky-300">{s.station}</span><span className="text-neutral-300">{s.items}</span></li>
+            <li key={s.station} className="flex gap-2 text-[12px]"><span className="w-9 shrink-0 font-mono text-sky-300">{s.station}</span><span className="text-neutral-300">{s.items}</span></li>
           ))}
         </ol>
         <p className="mt-1.5 text-[11px] text-neutral-500">Quantities from the BOM. Positions inside the rack are illustrative.</p>

@@ -59,6 +59,18 @@ describe('Production line', () => {
     expect(staged.sort()).toEqual(expected.sort())
   })
 
+  it('has the five line stations in order, each long enough for its POU pallets', () => {
+    const line = LAYOUT.stations.filter((s) => s.id !== 'SUBASSY')
+    expect(line.map((s) => s.name)).toEqual(['Chassis', 'Blades / cassettes', 'Wiring', 'Testing', 'Packout'])
+    for (let i = 0; i < line.length; i++) {
+      const s = line[i]
+      const lo = s.rack.z - s.span / 2, hi = s.rack.z + s.span / 2
+      for (const p of s.pou) expect(p.z - PALLET.width / 2, `${s.id} ${p.pn}`).toBeGreaterThanOrEqual(lo)
+      for (const p of s.pou) expect(p.z + PALLET.width / 2, `${s.id} ${p.pn}`).toBeLessThanOrEqual(hi)
+      if (i > 0) expect(lo).toBeCloseTo(line[i - 1].rack.z + line[i - 1].span / 2)
+    }
+  })
+
   it('keeps POU pallets and racks from colliding', () => {
     const rects = LAYOUT.stations.flatMap((s) => [...s.pou.map((p) => palletRect(p, true)), rackFootprint(s.rack)])
     for (let i = 0; i < rects.length; i++) {

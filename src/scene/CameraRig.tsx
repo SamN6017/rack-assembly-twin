@@ -12,13 +12,14 @@ type View = [px: number, py: number, pz: number, tx: number, ty: number, tz: num
 const b = LAYOUT.building
 const cx = (b.minX + b.maxX) / 2
 const cz = (b.minZ + b.maxZ) / 2
-const ws7 = LAYOUT.stations.find((s) => s.id === 'WS7')!
+// Line close-up: the wiring station, where the most parts go on.
+const lineView = LAYOUT.stations.find((s) => s.id === 'ST3')!
 const kz = (LAYOUT.kanbanArea.minZ + LAYOUT.kanbanArea.maxZ) / 2
 
 export const VIEWS: Record<CameraPreset, View> = {
   iso: [cx + 45, 75, b.maxZ + 55, cx + 4, 0, cz + 2],
   top: [cx, 135, cz + 0.01, cx, 0, cz],
-  line: [ws7.rack.x + 3.4, 2.3, ws7.rack.z + 3.2, ws7.rack.x, 1.1, ws7.rack.z],
+  line: [lineView.rack.x + 3.4, 2.3, lineView.rack.z + 3.2, lineView.rack.x, 1.1, lineView.rack.z],
   kanban: [LAYOUT.kanbanArea.maxX + 14, 16, kz + 22, 12, 0, kz],
   dsv: [-6, 22, 46, -25, 2, 20],
 }

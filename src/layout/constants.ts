@@ -38,7 +38,10 @@ export const LINE = {
   rackX: 51,          // centreline of racks on the line
   pouX: 46.6,         // POU pallet column (aisle side, as on P1); one pallet deep so each is reachable
   firstStationZ: 4,
-  stationPitch: 8.2,  // fits the 6 POU pallets at WS2 / WS3 in one column
+  // Each station is as long as its POU pallet column needs (one pallet deep, so each is reachable),
+  // and never shorter than a rack with two workers and a bench. The chassis station stages 14 parts.
+  minStationSpan: 8.2,
+  stationSpanMargin: 1.4,
   benchOffsetX: 2.0,  // bench sits on the main-aisle side of each rack
 }
 
@@ -62,14 +65,14 @@ export const SERVER_RACK = { width: 0.6, depth: 1.2, height: 2.286 }
 
 // Rack conveyor (V2). No line equipment data was supplied: an indexing roller conveyor carrying
 // each rack on a carrier, sized for the rack footprint. All values ESTIMATES.
-// The main run follows the existing station line; the outfeed turns east past WS8 and runs north
+// The main run follows the existing station line; the outfeed turns east past packout and runs north
 // on the main-aisle side of the benches to finished-rack staging (top right of P1).
 export const CONVEYOR = {
   bedWidth: 1.4,       // across travel; rack depth 1.2 m plus guides
   bedHeight: 0.25,     // carrier deck height above the floor
-  loadDz: 2.0,         // load position before WS1: the next base rack goes on while WS1 empties
+  loadDz: 2.0,         // load position before station 1: the next base rack goes on while it empties
   outfeedX: 55.2,      // outfeed centreline, between the benches and the main aisle
-  turnDz: 2.8,         // past WS8 to the east turn, clear of the 2-bin shelving
+  turnDz: 2.8,         // past the last station to the east turn, clear of the 2-bin shelving
   endZ: 1.0,           // outfeed ends (lowering table) just south of finished staging
   laneTurnZ: -1.8,     // racks roll off the table into staging along a marked floor lane
   laneX: 56.4,

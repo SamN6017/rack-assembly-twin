@@ -5,7 +5,7 @@ import { getPart } from './data/parts'
 import { LAYOUT } from './layout/factoryLayout'
 import { resolveEntity } from './scene/entities'
 import { computeKpis } from './sim/kpis'
-import { DEFAULT_MOVEMENT, isTracked, poseAt, runMovementSim, snapshotAt, type MovementConfig, type MovementResult } from './sim/movementSim'
+import { DEFAULT_MOVEMENT, isTracked, poseAt, runMovementSim, snapshotAt, SUBASSY_FEEDS, type MovementConfig, type MovementResult } from './sim/movementSim'
 import { distanceToRect, OBSTACLES } from './sim/obstacles'
 import { GRAPH } from './sim/routeGraph'
 import { capsuleOf } from './sim/timeline'
@@ -61,7 +61,7 @@ describe('acceptance', () => {
     for (const e of base.inventory) {
       // Parts are fitted when the rack arrives, one conveyor transfer after the index.
       if (e.kind !== 'rack' || e.t + base.transferS > base.horizon) continue
-      const visits = e.station === 'WS4' ? [station('WS4'), station('SUBASSY')] : [station(e.station)]
+      const visits = e.station === SUBASSY_FEEDS ? [station(SUBASSY_FEEDS), station('SUBASSY')] : [station(e.station)]
       for (const v of visits) for (const p of v.pou) {
         const part = getPart(p.pn)
         if (isTracked(part) && part.models.includes(e.model)) expected += part.qtyPerRack!
@@ -133,7 +133,7 @@ describe('acceptance', () => {
   it('5. a material shortage can block production', () => {
     const r = run({ stock: { '1181838-03': { kanban: 0, pou: 0 } } })
     expect(r.blocks[0]).toMatchObject({ from: 0 })
-    expect(r.blocks[0].keys).toContain('WS5:1181838-03')
+    expect(r.blocks[0].keys).toContain('ST2:1181838-03')
     expect(snapshotAt(r, 1800).line.blocked).toBe(true)
     expect(r.stats.racksCompleted).toBeLessThan(r.targetRacks)
     expect(busy.stats.blockedSec).toBeGreaterThan(0)

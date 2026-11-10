@@ -17,7 +17,7 @@ export function BottomPanel() {
   const selectedPn = useUi((s) => (s.selected ? resolveEntity(s.selected)?.pn : undefined))
   const q = query.trim().toLowerCase()
   const rows = q
-    ? KANBAN_PARTS.filter((p) => [p.pn, p.altPn ?? '', p.description, p.workstation ?? '', ...p.models].some((f) => f.toLowerCase().includes(q)))
+    ? KANBAN_PARTS.filter((p) => [p.pn, p.altPn ?? '', p.description, p.workstation ?? '', p.station ?? '', ...p.models].some((f) => f.toLowerCase().includes(q)))
     : KANBAN_PARTS
 
   return (
@@ -63,7 +63,7 @@ export function BottomPanel() {
                 <td className="px-3 py-1 font-sans">
                   <span className="flex items-center gap-1.5 text-neutral-400"><span className={`h-2.5 w-2.5 rounded-sm ${TAB_COLOR[modelTab(p)]}`} />{p.models.join(' + ')}</span>
                 </td>
-                <td className="px-3 py-1 text-sky-300">{p.workstation ?? '—'}</td>
+                <td className="px-3 py-1 text-sky-300" title="Physical station · sheet step">{p.station ?? '—'}<span className="ml-1 text-[10px] text-neutral-500">{p.workstation}</span></td>
                 <td className="px-3 py-1 text-right">{p.qtyPerRack ?? '—'}</td>
                 <td className="px-3 py-1 text-right">{p.qtyPerPallet ?? '—'}</td>
                 <td className="px-3 py-1 text-right">{p.kanbanPallets}</td>

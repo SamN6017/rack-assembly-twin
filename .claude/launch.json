@@ -10,7 +10,8 @@
         "--",
         "--port",
         "5173",
-        "--strictPort"
+        "--strictPort",
+        "--host"
       ],
       "port": 5173
     },
@@ -22,7 +23,8 @@
         "preview",
         "--port",
         "4173",
-        "--strictPort"
+        "--strictPort",
+        "--host"
       ],
       "port": 4173
     }

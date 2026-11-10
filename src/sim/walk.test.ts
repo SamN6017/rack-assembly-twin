@@ -29,7 +29,7 @@ describe('first-person walkthrough', () => {
   })
 
   it('cannot walk through walls, the conveyor, benches or storage', () => {
-    const st = LAYOUT.stations.find((s) => s.id === 'WS3')!
+    const st = LAYOUT.stations.find((s) => s.id === 'ST3')!
     // Walk straight at the conveyor from the POU side: stopped at the bed edge.
     const from = { x: st.rack.x - 1.2, z: st.rack.z + 4 }
     expect(isFree(from)).toBe(true)

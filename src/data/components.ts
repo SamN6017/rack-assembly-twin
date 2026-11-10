@@ -1,7 +1,7 @@
 import extraction from '../../data/factory-extraction.json'
 import { loadProfile, type AssetId, type LoadProfile } from '../assets/manifest'
 import { LAYOUT } from '../layout/factoryLayout'
-import { KANBAN_PARTS, type Confidence, type KanbanPart } from './parts'
+import { KANBAN_PARTS, stationOfStep, type Confidence, type KanbanPart } from './parts'
 
 /**
  * One record per stocked part: the fields the brief asks every component to carry. Physical part
@@ -61,18 +61,19 @@ function buildRecord(part: KanbanPart): ComponentRecord {
 
 export const COMPONENTS = new Map(KANBAN_PARTS.map((p) => [p.pn, buildRecord(p)]))
 
-export interface SmallPart { pn: string; description: string; workstation: string; qtyPerRack: number | 'roll' }
+export interface SmallPart { pn: string; description: string; workstation: string; station: string | null; qtyPerRack: number | 'roll' }
 
 export const SMALL_PARTS: SmallPart[] = extraction.small_parts_2bin.items.map((s) => ({
   pn: s.pn,
   description: s.description,
   workstation: s.workstation,
+  station: stationOfStep(s.workstation),
   qtyPerRack: s.qty_per_rack as number | 'roll',
 }))
 
-/** Parts consumed at a station: pallet Kanban parts staged there, plus 2-bin small parts. */
+/** Parts consumed at a station (ST1 … ST5 or SUBASSY): pallet Kanban parts staged there, plus 2-bin small parts. */
 export function stationParts(stationId: string) {
-  const kanban = KANBAN_PARTS.filter((p) => p.workstation?.split('&').map((s) => s.trim()).includes(stationId))
-  const small = SMALL_PARTS.filter((s) => s.workstation.split('/').includes(stationId))
+  const kanban = KANBAN_PARTS.filter((p) => p.station === stationId)
+  const small = SMALL_PARTS.filter((s) => s.station === stationId)
   return { kanban, small }
 }

@@ -45,7 +45,7 @@ export function WalkHud() {
       {st && (
         <div className="pointer-events-none absolute bottom-14 left-1/2 w-72 -translate-x-1/2 rounded-md bg-black/70 px-3 py-2 text-[12px] text-neutral-200 ring-1 ring-white/15 backdrop-blur">
           <div className="flex items-baseline justify-between">
-            <span className="text-[13px] font-semibold text-neutral-100">{st.id}</span>
+            <span className="text-[13px] font-semibold text-neutral-100">{LINE_STATIONS[st.station].label}</span>
             <span className={STATE_TONE[st.state]}>{STATE_TEXT[st.state]}</span>
           </div>
           {level !== 'minimal' && st.rack && <div className="mt-0.5 flex justify-between font-mono text-[11px] text-neutral-300"><span>{st.rack.id} · {st.rack.model}</span>{level === 'detailed' && <span>{RACK_STATE_LABEL[st.rack.state]}</span>}</div>}

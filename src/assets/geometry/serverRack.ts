@@ -44,29 +44,24 @@ function shelf(b: GeoBuilder, y: number, units: number, body: 'zinc' | 'batteryG
  * the position of each item inside the rack is illustrative, since no rack drawing was supplied.
  */
 export const INSTALL_SEQUENCE: { station: string; items: string }[] = [
-  { station: 'WS1', items: 'Base rack, 2 large busbars' },
-  { station: 'WS2', items: '2 right + 2 left rails, small busbars' },
-  { station: 'WS3', items: '4 battery shelves, 2 top shelves, cable managers' },
-  { station: 'WS4', items: 'Battery water pan, 2 adapter plates, 16 M shelves (sub-assembly)' },
-  { station: 'WS5', items: '16 T shelves' },
-  { station: 'WS6', items: 'Not in photos' },
-  { station: 'WS7', items: '2 bottom drain modules, 14 + 14 drain modules' },
-  { station: 'WS8', items: '7 center rack cable managers' },
+  { station: 'ST1', items: 'Base rack, busbars, 4 rails, 4 battery shelves, 2 top shelves, cable managers / DCN shelf' },
+  { station: 'ST2', items: 'Battery water pan, adapter plates, 16 M shelves (sub-assembly), 16 T shelves' },
+  { station: 'ST3', items: '2 + 2 bottom drain modules, 14 + 14 drain modules, 7 centre rack cable managers' },
+  { station: 'ST4', items: 'Test only: no parts in the sheet' },
+  { station: 'ST5', items: '2 right, 2 left, 2 front shipping brackets' },
 ]
 
 export function buildRackAtStage(stage: number): GeoBuilder {
   const b = buildRackFrame()
-  const done = (ws: string) => INSTALL_SEQUENCE.findIndex((s) => s.station === ws) <= stage
+  const done = (st: string) => INSTALL_SEQUENCE.findIndex((s) => s.station === st) <= stage
   const rear = -D / 2 + 0.15
 
-  if (done('WS1')) for (const x of [-0.1, 0.1]) b.box('copper', 0.04, 1.9, 0.01, x, 1.15, rear)
-  if (done('WS2')) {
+  if (done('ST1')) {
+    for (const x of [-0.1, 0.1]) b.box('copper', 0.04, 1.9, 0.01, x, 1.15, rear)
     for (const s of [-1, 1]) {
       b.box('zinc', 0.02, 0.04, D - 0.26, s * 0.235, 0.15, 0)
       b.box('copper', 0.03, 0.6, 0.01, s * 0.2, 0.5, rear)
     }
-  }
-  if (done('WS3')) {
     for (let i = 0; i < 4; i++) shelf(b, 0.19 + i * 0.092, 2, 'batteryGrey', 'bezelGrey')
     for (let i = 0; i < 2; i++) shelf(b, 2.12 + i * 0.046, 1, 'zinc', 'bezelGrey')
     for (const s of [-1, 1]) {
@@ -75,24 +70,29 @@ export function buildRackAtStage(stage: number): GeoBuilder {
       for (let k = 0; k < 14; k++) b.box('steelDark', 0.07, 0.012, 0.05, x, 0.3 + k * 0.13, D / 2 + 0.015)
     }
   }
-  if (done('WS4')) {
+  if (done('ST2')) {
     b.box('steelGrey', 0.5, 0.035, 1.0, 0, 0.115, 0)
     for (const s of [-1, 1]) b.box('zinc', 0.12, 0.01, 0.15, s * 0.16, 0.57, D / 2 - 0.2)
     for (let i = 0; i < 16; i++) shelf(b, 0.62 + i * 0.0465, 1, 'zinc', 'bezelBlack')
+    for (let i = 0; i < 16; i++) shelf(b, 1.37 + i * 0.0465, 1, 'zinc', 'bezelGrey')
   }
-  if (done('WS5')) for (let i = 0; i < 16; i++) shelf(b, 1.37 + i * 0.0465, 1, 'zinc', 'bezelGrey')
-  if (done('WS7')) {
+  if (done('ST3')) {
     for (const s of [-1, 1]) {
       b.box('steelGrey', 0.12, 0.07, 0.06, s * 0.15, 0.13, -D / 2 + 0.05)
       b.cyl('chrome', 0.018, 1.55, s * 0.19, 1.35, -D / 2 + 0.06)
       for (let k = 0; k < 14; k++) b.cyl('copper', 0.008, 0.05, s * 0.19, 0.65 + k * 0.1, -D / 2 + 0.09, 'z', 8)
     }
+    for (let k = 0; k < 7; k++) b.box('bezelBlack', 0.48, 0.03, 0.04, 0, 0.45 + k * 0.27, D / 2 - 0.07)
   }
-  if (done('WS8')) for (let k = 0; k < 7; k++) b.box('bezelBlack', 0.48, 0.03, 0.04, 0, 0.45 + k * 0.27, D / 2 - 0.07)
+  // Testing adds nothing physical. Packout: shipping brackets at the base, front and sides.
+  if (done('ST5')) {
+    for (const s of [-1, 1]) b.box('safetyYellow', 0.03, 0.12, 0.5, s * (W / 2 + 0.02), 0.12, 0)
+    b.box('safetyYellow', W - 0.1, 0.12, 0.03, 0, 0.12, D / 2 + 0.02)
+  }
   return b
 }
 
-/** A fully assembled rack after WS8: everything installed, plus a green "passed" beacon and tag on top. */
+/** A fully assembled rack after packout: everything installed, plus a green "passed" beacon and tag on top. */
 export function buildCompletedRack(): GeoBuilder {
   const b = buildRackAtStage(INSTALL_SEQUENCE.length - 1)
   b.box('steelGrey', 0.1, 0.02, 0.1, 0, H + 0.01, 0)

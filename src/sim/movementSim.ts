@@ -1,5 +1,4 @@
 import { getPart, KANBAN_PARTS, PART_BY_PN, type KanbanPart, type Model } from '../data/parts'
-import { LINE } from '../layout/constants'
 import { LAYOUT } from '../layout/factoryLayout'
 import { EventQueue, seededRandom } from './eventQueue'
 import { buildPath, makeProfile, type Vec2 } from './path'
@@ -13,7 +12,7 @@ import {
  * Material-flow simulation: line consumption, Kanban cards and pallet movement.
  *
  * The line pulls one rack per takt. Each rack is a Yawn or a Bloom (seeded by the model mix) and
- * consumes its BOM quantity of every pallet part at that part's workstation. A point-of-use pallet
+ * consumes its BOM quantity of every pallet part at the line station that fits it. A point-of-use pallet
  * that can no longer supply a full rack raises a delivery task that a CLS handler fulfils from the
  * part's in-use Kanban. When a Kanban's last pallet leaves, its card goes on the board; DSV collects
  * cards at each board inspection, prepares the pallets, stages them and a DSV handler refills the
@@ -24,9 +23,10 @@ import {
  * for its rack; it restarts the moment the missing pallet is delivered (PRODUCTION_BLOCKED). With
  * 'pass' a short rack moves on and the pieces are owed (logged as a starvation).
  * Each index starts a physical transfer: every rack rides the conveyor to the next station
- * together (walking-beam style), taking `transferS` from the conveyor's placeholder speed. Each
- * station then assembles for the rest of the takt; material leaves POU stock when the rack arrives
- * (assembly start), and a rack is complete when WS8's work ends, one takt after it entered WS8.
+ * together (walking-beam style). Stations differ in length, so `transferS` is the time for the
+ * longest move at the conveyor's placeholder speed. Each station then assembles for the rest of the
+ * takt; material leaves POU stock when the rack arrives (assembly start), and a rack is complete
+ * when packout's work ends, one takt after it entered the last station.
  * Station cycle times are unknown, so the takt stands in for them: output is material-feasible
  * production, not verified factory throughput.
  * Everything is computed up front, so handler poses and stock are pure functions of time.
@@ -73,7 +73,7 @@ export interface MovementConfig {
   /** Rack conveyor between stations, m/s and m/s². PLACEHOLDERS: no line equipment data. */
   conveyorSpeed: number
   conveyorAccel: number
-  /** Outfeed conveyor from WS8 to finished-rack staging, m/s. PLACEHOLDER. */
+  /** Outfeed conveyor from packout to finished-rack staging, m/s. PLACEHOLDER. */
   outfeedSpeed: number
 }
 
@@ -87,8 +87,14 @@ export const DEFAULT_MOVEMENT: MovementConfig = {
   conveyorSpeed: 0.4, conveyorAccel: 0.2, outfeedSpeed: 0.4,
 }
 
-/** Seconds a rack takes to ride the conveyor one station pitch. */
-export const transferSeconds = (cfg: MovementConfig) => makeProfile(LINE.stationPitch, cfg.conveyorSpeed, cfg.conveyorAccel).duration
+/** Distance of each conveyor move into station k: the load position to station 1, then stop to stop. */
+export const STOP_DISTANCES = LAYOUT.conveyor.stops.map((p, k) => {
+  const from = k === 0 ? LAYOUT.conveyor.load : LAYOUT.conveyor.stops[k - 1]
+  return Math.hypot(p.x - from.x, p.z - from.z)
+})
+
+/** Seconds an index takes: every rack moves at once, so the longest move sets the time. */
+export const transferSeconds = (cfg: MovementConfig) => makeProfile(Math.max(...STOP_DISTANCES), cfg.conveyorSpeed, cfg.conveyorAccel).duration
 
 /** Handler bays in the layout cap the staffing levels a scenario can use. */
 export const MAX_HANDLERS = {
@@ -111,7 +117,7 @@ export type InvEvent =
   | { t: number; kind: 'starve'; key: string; backorder: number }
   | { t: number; kind: 'rack'; station: string; rack: number; model: Model; last: boolean }
   | { t: number; kind: 'inspect' }
-  /** WS8 finished this rack: a completed rack (RACK_COMPLETED). */
+  /** Packout finished this rack: a completed rack (RACK_COMPLETED). */
   | { t: number; kind: 'complete'; rack: number; model: Model }
   /** The paced line stopped (keys: POUs it waits for) or restarted. */
   | { t: number; kind: 'line'; blocked: boolean; keys: string[] }
@@ -255,10 +261,13 @@ export function pouPalletHours(part: KanbanPart, cfg: MovementConfig): number | 
 /** Parts whose stock can be simulated: both BOM quantity and pallet quantity are known. */
 export const isTracked = (part: KanbanPart) => !!part.qtyPerPallet && !!part.qtyPerRack
 
-/** Order in which a rack visits the stations. Sub-assembly feeds WS4, so it works in step with it. */
+/** Line station the sub-assembly builds for (blades / cassettes): it works in step with it. */
+export const SUBASSY_FEEDS = 'ST2'
+
+/** Order in which a rack visits the stations. */
 export function stationStep(stationId: string): number {
   const line = LAYOUT.stations.filter((s) => s.id !== 'SUBASSY').map((s) => s.id)
-  return stationId === 'SUBASSY' ? line.indexOf('WS4') : line.indexOf(stationId)
+  return line.indexOf(stationId === 'SUBASSY' ? SUBASSY_FEEDS : stationId)
 }
 
 export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): MovementResult {
@@ -703,7 +712,7 @@ export function runMovementSim(cfg: MovementConfig = DEFAULT_MOVEMENT): Movement
     q.push(t + takt, { type: 'index', j: j + 1 })
   }
 
-  /** Racks have arrived: each station fits its parts (sub-assembly builds for the rack at WS4). */
+  /** Racks have arrived: each station fits its parts (sub-assembly builds for the rack at station 2). */
   function assemble(t: number, j: number) {
     for (const st of LAYOUT.stations) consume(t, st.id, j - stationStep(st.id))
   }

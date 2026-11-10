@@ -21,7 +21,7 @@ const gap = (a: ReturnType<typeof foot>, b: ReturnType<typeof foot>) =>
   Math.max(a.minX - b.maxX, b.minX - a.maxX, a.minZ - b.maxZ, b.minZ - a.maxZ)
 
 describe('assembly line', () => {
-  it('takes every rack from WS1 through WS8 to finished staging, in order', () => {
+  it('takes every rack from station 1 through packout to finished staging, in order', () => {
     for (const r of [0, 3, 10]) {
       let lastStation = -1
       const seen = new Set<number>()
@@ -113,7 +113,7 @@ describe('assembly line', () => {
     expect(n).toBeGreaterThan(100)
   })
 
-  it('counts a rack complete when WS8 finishes it, matching the production counter', () => {
+  it('counts a rack complete when packout finishes it, matching the production counter', () => {
     for (const r of [base, busy]) {
       for (let t = 600; t <= r.horizon; t += 977) {
         const j = lineIndexAt(r, t)

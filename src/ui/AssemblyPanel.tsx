@@ -32,7 +32,7 @@ export function AssemblyPanel() {
 
   return (
     <Section title="Assembly line" right={<span className={`rounded px-1.5 py-px text-[10px] font-semibold uppercase ring-1 ${tone}`}>{status}</span>}>
-      <Row label="Workstations" value={N_STATIONS} />
+      <Row label="Line stations" value={`${N_STATIONS} + sub-assembly`} />
       <Row label="Workers" value={`${N_STATIONS * WORKERS_PER_STATION} (${WORKERS_PER_STATION} per station)`} />
       <Row label="Racks in production" value={inProduction} />
       <Row label="Racks completed" value={snapshot.racksCompleted} />
@@ -49,16 +49,17 @@ export function AssemblyPanel() {
         </div>
       </div>
 
-      <div className="mt-2 text-[10px] uppercase tracking-wider text-neutral-500">Workstations</div>
-      <div className="mt-1 grid grid-cols-4 gap-1">
+      <div className="mt-2 text-[10px] uppercase tracking-wider text-neutral-500">Stations</div>
+      <div className="mt-1 grid grid-cols-5 gap-1">
         {stations.map((s) => (
           <button
             key={s.id}
             onClick={() => focusStation(s.id)}
-            title={`${s.id}: ${STATE_WORD[s.state]}${s.rack ? ` · ${s.rack.id}` : ''}`}
-            className={`flex items-center justify-center gap-1 rounded py-1 text-[11px] ring-1 ${selected === `station:${s.id}` ? 'bg-sky-500/15 text-sky-100 ring-sky-500/50' : 'bg-white/[0.03] text-neutral-300 ring-white/10 hover:bg-white/[0.07]'}`}
+            title={`${LINE_STATIONS[s.station].label}: ${STATE_WORD[s.state]}${s.rack ? ` · ${s.rack.id}` : ''}`}
+            className={`flex flex-col items-center justify-center rounded py-1 text-[11px] leading-tight ring-1 ${selected === `station:${s.id}` ? 'bg-sky-500/15 text-sky-100 ring-sky-500/50' : 'bg-white/[0.03] text-neutral-300 ring-white/10 hover:bg-white/[0.07]'}`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${DOT[s.state]}`} />{s.id}
+            <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${DOT[s.state]}`} />{s.station + 1}</span>
+            <span className="text-[10px] text-neutral-400">{LINE_STATIONS[s.station].name.split(' ')[0]}</span>
           </button>
         ))}
       </div>

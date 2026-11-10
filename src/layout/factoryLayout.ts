@@ -1,4 +1,4 @@
-import { KANBAN_PARTS, PLANNING_BASIS, getPart } from '../data/parts'
+import { KANBAN_PARTS, LINE_STATION_DEFS, PLANNING_BASIS, getPart } from '../data/parts'
 import {
   AISLES, BACK_GAP, BUILDING, LINE, PALLET, PICK_AISLE, RACKING, ROUTES, ROW_CAPACITY, ROW_PITCH, ROW_SETBACK,
   CONVEYOR, SERVER_RACK, STAGING, WORKER, ZONES,
@@ -24,7 +24,14 @@ export interface PouPosition { pn: string; x: number; z: number }
 
 export interface Station {
   id: string
+  /** Short display name: "Station 1 · Chassis". */
   label: string
+  /** Operation, e.g. "Chassis" (empty for the sub-assembly). */
+  name: string
+  /** Sheet assembly steps this station performs (WS1 …). */
+  steps: string[]
+  /** Length of the station along the line, metres. */
+  span: number
   rack: Vec2
   bench: Vec2
   pou: PouPosition[]
@@ -40,11 +47,11 @@ export interface Corridor { id: string; a: Vec2; b: Vec2 }
 
 /** Rack conveyor: station stops, the outfeed to staging, and solid bed footprints. */
 export interface Conveyor {
-  /** Rack position at WS1 … WS8, in line order. */
+  /** Rack position at each line station, in line order. */
   stops: Vec2[]
-  /** Where WS1 loads the next base rack onto a carrier, just upstream of WS1. */
+  /** Where station 1 loads the next base rack onto a carrier, just upstream of it. */
   load: Vec2
-  /** WS8 stop → east turn → north along the main aisle → lowering table at the end. */
+  /** Last stop → east turn → north along the main aisle → lowering table at the end. */
   outfeed: Vec2[]
   /** Lowering table → floor lane between the staging rows (the rack then rolls into its spot). */
   stagingLane: Vec2[]
@@ -96,8 +103,6 @@ export const KANBAN_ORDER: string[] = [
   '1231956', '1231954', '1231955',
 ]
 
-// Workstation order down the line. WS6 exists in the numbering but its content is not in the photos.
-const STATION_IDS = ['WS1', 'WS2', 'WS3', 'WS4', 'WS5', 'WS6', 'WS7', 'WS8']
 const POU_PITCH = 1.35
 
 const HALF_L = PALLET.length / 2
@@ -162,38 +167,43 @@ function buildKanban() {
 }
 
 function buildStations(): Station[] {
+  // Each part is staged once, at the station that fits it (shared steps: the first one).
   const byStation = new Map<string, string[]>()
   for (const part of KANBAN_PARTS) {
-    if (!part.workstation) continue  // shipping brackets: workstation not visible in photos
-    // "WS7 & WS8" parts are staged once, at the first station that uses them.
-    const ws = part.workstation.split('&')[0].trim()
-    byStation.set(ws, [...(byStation.get(ws) ?? []), part.pn])
+    if (!part.station) continue
+    byStation.set(part.station, [...(byStation.get(part.station) ?? []), part.pn])
   }
   const pouFor = (ws: string, x: number, cz: number): PouPosition[] => {
     const pns = byStation.get(ws) ?? []
     return pns.map((pn, i) => ({ pn, x, z: cz + (i - (pns.length - 1) / 2) * POU_PITCH }))
   }
 
-  const stations: Station[] = STATION_IDS.map((id, i) => {
-    const z = LINE.firstStationZ + i * LINE.stationPitch
+  // Stations sit end to end, each centred on its own span; the rack stops at the centre. The line
+  // starts a little south of the top corridor so the first POU pallet keeps clear of it.
+  let start = LINE.firstStationZ - 2
+  const stations: Station[] = LINE_STATION_DEFS.map((def, i) => {
+    const span = Math.max(LINE.minStationSpan, (byStation.get(def.id)?.length ?? 0) * POU_PITCH + LINE.stationSpanMargin)
+    const z = start + span / 2
+    start += span
     return {
-      id, label: id,
+      id: def.id, label: `Station ${i + 1} · ${def.name}`, name: def.name, steps: def.steps, span,
       rack: { x: LINE.rackX, z },
       bench: { x: LINE.rackX + LINE.benchOffsetX, z },
-      pou: pouFor(id, LINE.pouX, z),
+      pou: pouFor(def.id, LINE.pouX, z),
       serviceX: ROUTES.pouLaneX,
-      confidence: id === 'WS6' ? 'placeholder' : 'verified',
+      confidence: def.confidence,
     }
   })
 
-  // Sub-assembly builds the M shelf unit consumed at WS4, so it sits on the handler floor opposite WS4.
-  const ws4 = stations[3]
+  // Sub-assembly builds the M shelf unit consumed at the blades / cassettes station, so it sits on
+  // the handler floor opposite that station.
+  const feeds = stations[1]
   const subX = ZONES.handlerFloor.maxX - 2.5
   stations.push({
-    id: 'SUBASSY', label: 'Sub-assembly',
-    rack: { x: subX, z: ws4.rack.z },
-    bench: { x: subX, z: ws4.rack.z + 2.4 },
-    pou: pouFor('SUBASSY', subX - 2.2, ws4.rack.z),
+    id: 'SUBASSY', label: 'Sub-assembly', name: '', steps: ['SUBASSY'], span: LINE.minStationSpan,
+    rack: { x: subX, z: feeds.rack.z },
+    bench: { x: subX, z: feeds.rack.z + 2.4 },
+    pou: pouFor('SUBASSY', subX - 2.2, feeds.rack.z),
     serviceX: ROUTES.spineX,
     confidence: 'estimated',
   })
@@ -239,7 +249,8 @@ function buildLayout(): FactoryLayout {
   const stations = buildStations()
   const rackingBays = buildRacking()
 
-  const lastZ = stations.find((s) => s.id === 'WS8')!.rack.z
+  const lineStations = stations.filter((s) => s.id !== 'SUBASSY')
+  const lastZ = lineStations[lineStations.length - 1].rack.z
   const botZ = kanbanArea.maxZ + 1.5
   const lineBotZ = lastZ + 2.2
   const R = ROUTES
@@ -276,7 +287,7 @@ function buildLayout(): FactoryLayout {
     clsPick: { ...AISLES.clsPick, minZ: R.topZ - 0.9, maxZ: botZ + 0.9 },
   }
 
-  const lineStops = stations.filter((s) => s.id !== 'SUBASSY').map((s) => s.rack)
+  const lineStops = lineStations.map((s) => s.rack)
   const C = CONVEYOR
   const turnZ = lastZ + C.turnDz
   const half = C.bedWidth / 2
@@ -294,12 +305,12 @@ function buildLayout(): FactoryLayout {
     ],
   }
   // Worker A on the POU side, worker B between the rack and the bench; both face the rack.
-  const workers: WorkerSpot[] = stations.filter((s) => s.id !== 'SUBASSY').flatMap((s) => [
+  const workers: WorkerSpot[] = lineStations.flatMap((s) => [
     { id: `${s.id}-A`, station: s.id, side: 'A' as const, x: s.rack.x - WORKER.sideA, z: s.rack.z + WORKER.stagger, yaw: Math.PI / 2 },
     { id: `${s.id}-B`, station: s.id, side: 'B' as const, x: s.rack.x + WORKER.sideB, z: s.rack.z - WORKER.stagger, yaw: -Math.PI / 2 },
   ])
 
-  const lineRect: Rect = { minX: LINE.pouX - 1, maxX: LINE.rackX + LINE.benchOffsetX + 1, minZ: LINE.firstStationZ - 4.5, maxZ: lastZ + 4.5 }
+  const lineRect: Rect = { minX: LINE.pouX - 1, maxX: LINE.rackX + LINE.benchOffsetX + 1, minZ: lineStops[0].z - lineStations[0].span / 2 - 2.5, maxZ: lastZ + 4.5 }
   const subassy = stations.find((s) => s.id === 'SUBASSY')!
   const corridorRects = corridors.map(({ a, b }) => ({ minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x), minZ: Math.min(a.z, b.z), maxZ: Math.max(a.z, b.z) }))
 
@@ -344,3 +355,6 @@ function buildLayout(): FactoryLayout {
 }
 
 export const LAYOUT: FactoryLayout = buildLayout()
+
+/** Display name for a station id ("ST1" → "Station 1 · Chassis"); unknown ids pass through. */
+export const stationLabel = (id: string) => LAYOUT.stations.find((s) => s.id === id)?.label ?? id

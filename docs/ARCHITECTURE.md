@@ -18,10 +18,13 @@ Full detail and per-value confidence live in `data/factory-extraction.json`.
 
 - **Verified:** 96 racks/day over 18 h (5.33/h; slide baseline 5/h); 2 Kanbans per part; 2 h lead time and
   2 h safety stock; 1 pallet at point of use; 29 pallet-Kanban part numbers with qty/rack, qty/pallet,
-  Kanban size; WS1–WS5, SUBASSY, WS7, WS8 content; Kanban board structure; small parts on 2-bin.
-- **Estimated:** line shape (one vertical line, ~10 stations), main aisle on the right, part-number digits
-  other than 1225629 / 1230914, shipping-bracket rows.
-- **Placeholder:** cycle times, WS6, handler count/speed/capacity, floor dimensions, part dimensions.
+  Kanban size; content of the sheet's assembly steps WS1–WS5, SUBASSY, WS7, WS8, WS10; Kanban board
+  structure; small parts on 2-bin. Five physical line stations (chassis, blades / cassettes, wiring,
+  testing, packout), as stated by the line team.
+- **Estimated:** which sheet steps each physical station performs (section 13), line shape (one vertical
+  line), main aisle on the right, part-number digits other than 1225629 / 1230914.
+- **Placeholder:** cycle times (including the test station), handler count/speed/capacity, floor
+  dimensions, part dimensions.
 
 ## 3. Architecture
 
@@ -130,7 +133,7 @@ Inventory transfer points: reserve on HANDLER_DISPATCHED (Kanban → in transit)
 - **Consumption**: the line pulls one rack per takt (3600 / rate s). Each rack is Yawn or Bloom
   (seeded, 50/50 placeholder mix) and takes its BOM quantity of every tracked pallet part at that
   part's station; rack r reaches line step k at (r + k) × takt, so the line is full at shift start.
-  Sub-assembly works in step with WS4. Cycle times are unknown, so the takt stands in for them.
+  Sub-assembly works in step with the station it feeds (blades / cassettes since section 13). Cycle times are unknown, so the takt stands in for them.
 - **Stock in pieces**: Kanban pieces = pallets × qty/pallet; POU stock is counted piece by piece.
   A POU raises a CLS delivery as soon as it cannot cover the next rack; the delivered pallet tops it
   up. Parts without BOM or pallet quantity (the three shipping brackets) are not simulated.
@@ -289,3 +292,35 @@ Inventory transfer points: reserve on HANDLER_DISPATCHED (Kanban → in transit)
 6. KPI dashboard, scenario comparison, acceptance tests. **Done.**
 7. V2: conveyor and rack transport, rack lifecycle, 16 workers, first-person walkthrough. **Done.**
 8. V2.1: faster walking, mode-aware labels, expanded view, display levels, physical board. **Done.**
+9. V2.2: five-station line (section 13). **Done.**
+
+## 13. V2.2: five physical stations
+
+Sections 8–11 describe the line as it was built through V2.1: eight stations named after the
+sheet's workstation column (WS1–WS8, with WS6 an empty placeholder). The line team corrected this:
+the line has five stations, and the sheet's WS numbers are assembly steps (the sheet uses WS1–WS5,
+WS7, WS8 and WS10, never WS6 or WS9). Names below are as given (verified); the step mapping is
+inferred from the part types (estimated) and lives in `line_stations` in the extraction JSON.
+
+| Station | Sheet steps | Fits |
+|---|---|---|
+| ST1 Chassis | WS1, WS2, WS3 | base rack, busbars, rails, battery and top shelves, cable managers / DCN shelf |
+| ST2 Blades / cassettes | WS4, WS5 (+ sub-assembly) | water pan, adapter plates, 16 M shelves, 16 T shelves |
+| ST3 Wiring | WS7, WS8 | bottom and side drain modules, centre rack cable managers |
+| ST4 Testing | none | no parts; its time is the takt like every other station (placeholder) |
+| ST5 Packout | WS10 | right, left and front shipping brackets (qty 2 each, now read from the sheet) |
+
+- **Data**: every part keeps `workstation` (the sheet step, as written) and gains `station` (the
+  physical station, via `stationOfStep`). Staging, consumption, the sub-assembly link
+  (`SUBASSY_FEEDS = 'ST2'`) and the panels all use `station`; tables show both.
+- **Layout**: stations sit end to end, each as long as its one-deep POU column needs (minimum
+  8.2 m). Chassis stages 14 parts, so it is 20.3 m long; the others are 8.2 m. The rack stops at
+  each station's centre. The line is shorter than before (last stop z = 51 instead of 61.4).
+- **Timing**: moves are no longer equal, so an index takes as long as the longest move (14.2 m,
+  ~38 s at the placeholder conveyor speed); every carrier starts and stops together and shorter
+  moves run proportionally slower. Assembly gets the rest of the takt.
+- **Rack build-up**: five stages. Testing adds nothing physical; packout adds the shipping
+  brackets. Rack states WAITING_FOR_WS1 and WS8_COMPLETE became WAITING_FOR_LOAD and
+  PACKOUT_COMPLETE. Workers: 10 (two per station).
+- **Still unknown**: whether the mapping above matches the floor, the test station's process and
+  time, and the shipping brackets' qty per pallet (so they are staged but not simulated).

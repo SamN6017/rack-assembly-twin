@@ -9,7 +9,7 @@ const VIEWS: { id: CameraPreset; label: string }[] = [
   { id: 'iso', label: 'Isometric' },
   { id: 'top', label: 'Top-down' },
   { id: 'kanban', label: 'Kanban area' },
-  { id: 'line', label: 'Workstation' },
+  { id: 'line', label: 'Station' },
   { id: 'dsv', label: 'DSV warehouse' },
 ]
 

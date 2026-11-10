@@ -258,10 +258,10 @@ function PartsColumn() {
                 <tr key={p.pn} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
                   <td className="px-1.5 text-center"><input type="checkbox" className="accent-sky-500" checked={focus.includes(p.pn)} onChange={() => toggleFocus(p.pn)} /></td>
                   <td className="max-w-[170px] px-1.5 py-0.5">
-                    <button onClick={() => select(station ? `pou:${station}:${p.pn}` : `kanban:${p.pn}#0:0`, { focus: true })} className="flex w-full items-center gap-1.5 text-left hover:underline" title={`${p.description} · ${p.workstation} · ${p.kanbanPallets} pallets per Kanban`}>
+                    <button onClick={() => select(station ? `pou:${station}:${p.pn}` : `kanban:${p.pn}#0:0`, { focus: true })} className="flex w-full items-center gap-1.5 text-left hover:underline" title={`${p.description} · ${p.station} (sheet ${p.workstation}) · ${p.kanbanPallets} pallets per Kanban`}>
                       <span className={`h-2 w-2 shrink-0 rounded-sm ${TAB_COLOR[modelTab(p)]}`} />
                       <span className="truncate font-sans text-neutral-200">{p.description}</span>
-                      <span className="shrink-0 text-[10px] text-neutral-500">{p.workstation}</span>
+                      <span className="shrink-0 text-[10px] text-neutral-500">{p.station}</span>
                     </button>
                   </td>
                   <td className="px-1.5 text-center"><input type="checkbox" className="accent-sky-500" checked={draft.extraKanbanPns.includes(p.pn)} onChange={() => toggleExtra(p.pn)} /></td>

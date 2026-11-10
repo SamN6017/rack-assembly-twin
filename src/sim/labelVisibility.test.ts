@@ -13,12 +13,12 @@ const facing = (from: { x: number; z: number }, to: { x: number; z: number }) =>
 
 describe('label visibility', () => {
   it('shows a station label when standing near it and looking at it', () => {
-    const at = eye(48.8, station('WS3').rack.z + 2)
-    expect(walkLabelVisible(at, facing(at, labelOf('WS3')), labelOf('WS3'), false)).toBe(true)
+    const at = eye(48.8, station('ST3').rack.z + 2)
+    expect(walkLabelVisible(at, facing(at, labelOf('ST3')), labelOf('ST3'), false)).toBe(true)
   })
 
   it('hides labels that are far away, with hysteresis at the edge', () => {
-    const lbl = labelOf('WS3')
+    const lbl = labelOf('ST3')
     const at = eye(lbl.x - 1.5, lbl.z + 7.6)   // ~7.8 m: between show and hide distances
     const f = facing(at, lbl)
     expect(walkLabelVisible(at, f, lbl, false)).toBe(false)  // not shown yet: needs to come closer
@@ -28,9 +28,9 @@ describe('label visibility', () => {
   })
 
   it('hides labels behind the viewer or off to the side', () => {
-    const at = eye(48.8, station('WS3').rack.z + 2)
-    const away = { x: 0, y: 0, z: 1 }   // looking down the line, WS3 behind
-    expect(walkLabelVisible(at, away, labelOf('WS3'), false)).toBe(false)
+    const at = eye(48.8, station('ST3').rack.z + 2)
+    const away = { x: 0, y: 0, z: 1 }   // looking down the line, ST3 behind
+    expect(walkLabelVisible(at, away, labelOf('ST3'), false)).toBe(false)
   })
 
   it('hides labels behind walls and storage', () => {
@@ -40,7 +40,7 @@ describe('label visibility', () => {
     const b = { x: bay.x + 3, y: 1.7, z: bay.z }
     expect(lineOfSight(a, b)).toBe(false)
     // Outside the building, nothing is visible inside.
-    expect(lineOfSight({ x: LAYOUT.building.maxX + 3, y: 1.7, z: 30 }, labelOf('WS4'))).toBe(false)
+    expect(lineOfSight({ x: LAYOUT.building.maxX + 3, y: 1.7, z: 30 }, labelOf('ST2'))).toBe(false)
     // Across open floor, it is.
     expect(lineOfSight(eye(58, 20), eye(58, 40))).toBe(true)
   })

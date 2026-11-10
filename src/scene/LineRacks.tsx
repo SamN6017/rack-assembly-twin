@@ -17,8 +17,8 @@ const toRender = (b: GeoBuilder): RenderPart[] => b.build().map((p) => ({ geomet
 const FACE_BENCH = Math.PI / 2
 
 /**
- * Appearance by stations finished: 0 = bare frame (WS1 still working), 1–7 = through that station,
- * 8 = complete with the green "passed" beacon. Built once and shared by every rack.
+ * Appearance by stations finished: 0 = bare frame (station 1 still working), 1 … N-1 = through that
+ * station, N = complete with the green "passed" beacon. Built once and shared by every rack.
  */
 let models: RenderPart[][] | null = null
 const modelFor = (done: number) => {
@@ -62,7 +62,7 @@ const Rack = memo(function Rack({ rack, done, onCarrier, start, register }: { ra
 
 /**
  * GPU racks on the assembly line, the outfeed and in finished staging. Each rack is one object
- * that keeps its identity from WS1 to staging; its pose and appearance come from the simulation
+ * that keeps its identity from station 1 to staging; its pose and appearance come from the simulation
  * (assemblyLine.rackAt), so pause, speed and reset need nothing special.
  */
 export function LineRacks() {

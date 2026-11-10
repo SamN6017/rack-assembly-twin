@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { GRAPH } from './routeGraph'
 import { getPart } from '../data/parts'
 import { LAYOUT } from '../layout/factoryLayout'
-import { DEFAULT_MOVEMENT, isTracked, poseAt, runMovementSim, snapshotAt, type MovementConfig, type MovementResult } from './movementSim'
+import { DEFAULT_MOVEMENT, isTracked, poseAt, runMovementSim, snapshotAt, SUBASSY_FEEDS, type MovementConfig, type MovementResult } from './movementSim'
 import { computeKpis } from './kpis'
 import { capsuleGap, capsuleOf } from './timeline'
 
@@ -118,8 +118,8 @@ describe('movement simulation', () => {
     for (const e of result.inventory) {
       // Parts are fitted when the rack arrives, one conveyor transfer after the index.
       if (e.kind !== 'rack' || e.t + result.transferS > result.horizon) continue
-      // Sub-assembly works in step with WS4, so it builds for the rack at WS4.
-      const visits = e.station === 'WS4' ? [station('WS4'), station('SUBASSY')] : [station(e.station)]
+      // Sub-assembly works in step with blades / cassettes, so it builds for the rack there.
+      const visits = e.station === SUBASSY_FEEDS ? [station(SUBASSY_FEEDS), station('SUBASSY')] : [station(e.station)]
       for (const v of visits) for (const p of v.pou) {
         const part = getPart(p.pn)
         if (isTracked(part) && part.models.includes(e.model)) expected += part.qtyPerRack!
@@ -184,7 +184,7 @@ describe('movement simulation', () => {
     const r = run('noTShelf')
     expect(r.blocks.length).toBeGreaterThan(0)
     expect(r.blocks[0].from).toBe(0)
-    expect(r.blocks[0].keys).toContain('WS5:1181838-03')
+    expect(r.blocks[0].keys).toContain('ST2:1181838-03')
     expect(r.stats.blockedSec).toBeGreaterThan(3600)
     expect(r.stats.racksCompleted).toBeLessThan(r.targetRacks)
     // Blocking never lets a rack pass short.
@@ -243,7 +243,7 @@ describe('movement simulation', () => {
   })
 
   it('keeps the random stream common across scenarios (same rack models whatever the stock)', () => {
-    const models = (r: MovementResult) => r.inventory.filter((e) => e.kind === 'rack' && e.station === 'WS1').slice(0, 30).map((e) => (e as { model: string }).model)
+    const models = (r: MovementResult) => r.inventory.filter((e) => e.kind === 'rack' && e.station === 'ST1').slice(0, 30).map((e) => (e as { model: string }).model)
     expect(models(run('noTShelf'))).toEqual(models(result))
   })
 

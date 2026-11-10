@@ -32,8 +32,8 @@ function tags(): Tag[] {
   ]
   const first = LINE_STATIONS[0].rack, last = LINE_STATIONS[LINE_STATIONS.length - 1].rack
   // Shown instead of eight station tags when the camera is far enough that they would pile up.
-  out.push({ id: 'line', text: 'Assembly line · WS1 → WS8', x: first.x, z: (first.z + last.z) / 2, y: 3.4, kind: 'line', confidence: 'verified' })
-  LINE_STATIONS.forEach((s, k) => out.push({ id: s.id, text: s.id === 'WS6' ? 'WS6 (contents unknown)' : s.id, x: s.rack.x, z: s.rack.z, y: 2.9, kind: 'station', confidence: s.confidence, station: k }))
+  out.push({ id: 'line', text: `Assembly line · ${LINE_STATIONS.length} stations`, x: first.x, z: (first.z + last.z) / 2, y: 3.4, kind: 'line', confidence: 'verified' })
+  LINE_STATIONS.forEach((s, k) => out.push({ id: s.id, text: s.label, x: s.rack.x, z: s.rack.z, y: 2.9, kind: 'station', confidence: s.confidence, station: k }))
   return out
 }
 

@@ -64,7 +64,7 @@ const Card = memo(function Card({ c, t, selected, related, onPick }: { c: CardVi
         <span className="font-mono text-[10px] text-neutral-400">{c.pallets}/{c.slot.pallets.length}</span>
       </div>
       <div className="mt-0.5 flex items-center justify-between text-[10px] text-neutral-500">
-        <span>{c.part.workstation ?? '—'} · {dur(t - c.since)}</span>
+        <span>{c.part.station ?? '—'} · {dur(t - c.since)}</span>
         {c.cycle && <DueTag cycle={c.cycle} t={t} />}
       </div>
     </button>
@@ -101,7 +101,7 @@ export function KanbanBoard() {
 
   const q = query.trim().toLowerCase()
   const shown = cards.filter((c) =>
-    (!q || [c.part.pn, c.part.description, c.part.workstation ?? ''].some((f) => f.toLowerCase().includes(q))) &&
+    (!q || [c.part.pn, c.part.description, c.part.workstation ?? '', c.part.station ?? ''].some((f) => f.toLowerCase().includes(q))) &&
     (!lateOnly || (c.cycle && t > c.cycle.dueAt)),
   )
   const byState = (s: KanbanState) => shown

@@ -18,7 +18,7 @@ describe('entity ids', () => {
   })
 
   it('reject malformed ids', () => {
-    for (const id of ['kanban:nope#0:0', 'rack:WS99', 'pou:WS1:000', 'finished:99', 'dsv:-1', 'garbage']) {
+    for (const id of ['kanban:nope#0:0', 'rack:ST99', 'pou:ST1:000', 'finished:99', 'dsv:-1', 'garbage']) {
       expect(resolveEntity(id), id).toBeNull()
     }
   })
@@ -38,15 +38,21 @@ describe('component records', () => {
     }
   })
 
-  it('give base rack a POU at WS1 with one rack per pallet', () => {
+  it('give base rack a POU at the chassis station with one rack per pallet', () => {
     const c = COMPONENTS.get('1225629')!
-    expect(c.pouDestination?.station).toBe('WS1')
+    expect(c.pouDestination?.station).toBe('ST1')
     expect(c.inventory.perKanban).toBe(22)
   })
 
-  it('list station consumption including shared WS7 & WS8 parts', () => {
-    const ws8 = stationParts('WS8').kanban.map((p) => p.description)
-    expect(ws8).toContain('Left Drain Module')
-    expect(ws8).toContain('Center Rack Cable Manager')
+  it('list station consumption, mapping the sheet steps onto the five line stations', () => {
+    // Wiring does sheet steps WS7 and WS8, including the shared "WS7 & WS8" drain modules.
+    const wiring = stationParts('ST3').kanban.map((p) => p.description)
+    expect(wiring).toContain('Left Drain Module')
+    expect(wiring).toContain('Center Rack Cable Manager')
+    // Testing has no rows in the sheet; packout fits the WS10 shipping brackets.
+    expect(stationParts('ST4').kanban).toHaveLength(0)
+    expect(stationParts('ST5').kanban.map((p) => p.description)).toEqual(['Right Shipping Bracket', 'Left Shipping Bracket', 'Front Shipping Bracket'])
+    // Every pallet part with a sheet step lands on a station.
+    for (const p of KANBAN_PARTS) expect(p.station, p.description).not.toBeNull()
   })
 })

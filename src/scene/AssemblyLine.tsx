@@ -1,7 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { INSTALL_SEQUENCE } from '../assets/geometry/serverRack'
 import { buildConveyor, floorTape, guardRail } from '../assets/geometry/conveyor'
 import { GeoBuilder } from '../assets/geometry/builder'
 import { MATERIALS } from '../assets/materials'
@@ -73,10 +72,10 @@ function StationKit() {
   // One material per lamp so each station can light its own.
   const lamps = useMemo(() => LINE_STATIONS.map(() => (['red', 'amber', 'green'] as const).map((c) => new THREE.MeshStandardMaterial({ color: LAMP[c], roughness: 0.3, emissive: LAMP[c], emissiveIntensity: 0, transparent: true, opacity: 0.85 }))), [])
   const lampGeo = useMemo(() => new THREE.CylinderGeometry(0.055, 0.055, 0.1, 16), [])
-  const signs = useMemo(() => LINE_STATIONS.map((s) => {
-    const seq = INSTALL_SEQUENCE.find((x) => x.station === s.id)
-    const placeholder = s.id === 'WS6'
-    return { s, tex: stationSignTexture(s.id, placeholder ? 'Operation not in sources (placeholder)' : seq?.items ?? '', placeholder) }
+  const signs = useMemo(() => LINE_STATIONS.map((s, k) => {
+    // Testing fits no parts: its sign is muted to show the operation has no data behind it.
+    const noParts = s.steps.length === 0
+    return { s, tex: stationSignTexture(`Station ${k + 1}`, s.name, noParts ? 'No parts in sheet · timing placeholder' : `Sheet steps ${s.steps.join(', ')}`, noParts) }
   }), [])
   const last = useRef<string>('')
   useFrame(() => {

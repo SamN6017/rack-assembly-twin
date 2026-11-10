@@ -46,9 +46,9 @@ export function partSignTexture(part: KanbanPart): THREE.CanvasTexture {
   return tex
 }
 
-/** Hanging workstation sign: big station number on safety blue, operation summary underneath. */
-export function stationSignTexture(id: string, caption: string, placeholder: boolean): THREE.CanvasTexture {
-  const key = `station:${id}:${caption}`
+/** Hanging station sign on safety blue: station number, operation in large type, a note underneath. */
+export function stationSignTexture(title: string, name: string, caption: string, muted: boolean): THREE.CanvasTexture {
+  const key = `station:${title}:${name}:${caption}`
   const hit = cache.get(key)
   if (hit) return hit
   const w = 512, h = 256
@@ -56,7 +56,7 @@ export function stationSignTexture(id: string, caption: string, placeholder: boo
   c.width = w
   c.height = h
   const ctx = c.getContext('2d')!
-  ctx.fillStyle = placeholder ? '#4b5563' : '#1d4f91'
+  ctx.fillStyle = muted ? '#4b5563' : '#1d4f91'
   ctx.fillRect(0, 0, w, h)
   ctx.strokeStyle = '#f2c218'
   ctx.lineWidth = 10
@@ -64,9 +64,11 @@ export function stationSignTexture(id: string, caption: string, placeholder: boo
   ctx.fillStyle = '#ffffff'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = 'bold 132px "Helvetica Neue", Arial, sans-serif'
-  ctx.fillText(id, w / 2, 104)
-  ctx.font = '28px "Helvetica Neue", Arial, sans-serif'
+  ctx.font = '34px "Helvetica Neue", Arial, sans-serif'
+  ctx.fillText(title.toUpperCase(), w / 2, 50, w - 40)
+  ctx.font = 'bold 76px "Helvetica Neue", Arial, sans-serif'
+  ctx.fillText(name, w / 2, 124, w - 40)
+  ctx.font = '26px "Helvetica Neue", Arial, sans-serif'
   ctx.fillText(caption, w / 2, 204, w - 40)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace

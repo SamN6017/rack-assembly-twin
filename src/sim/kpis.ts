@@ -1,5 +1,5 @@
 import { getPart, KANBAN_PARTS } from '../data/parts'
-import { LAYOUT } from '../layout/factoryLayout'
+import { LAYOUT, stationLabel } from '../layout/factoryLayout'
 import { applyEvent, initialSnapshot, rackId, isTracked, partRate, poseAt, type InventorySnapshot, type MovementResult, targetBy } from './movementSim'
 
 /** Hours of consumption one part's floor stock (both Kanbans plus every POU) covers. */
@@ -135,12 +135,12 @@ export function eventLog(result: MovementResult): LogEvent[] {
   const lineIds = LAYOUT.stations.filter((x) => x.id !== 'SUBASSY').map((x) => x.id)
   for (const e of result.inventory) {
     if (e.kind === 'rack') {
-      if (e.station === lineIds[0]) out.push({ t: e.t, type: 'PRODUCTION_REQUESTED', text: `${rackId(e.rack)} (${e.model}) loaded at ${e.station}`, entity: `linerack:${e.rack}` })
+      if (e.station === lineIds[0]) out.push({ t: e.t, type: 'PRODUCTION_REQUESTED', text: `${rackId(e.rack)} (${e.model}) loaded at ${stationLabel(e.station)}`, entity: `linerack:${e.rack}` })
     } else if (e.kind === 'complete') {
-      out.push({ t: e.t, type: 'RACK_COMPLETED', text: `${rackId(e.rack)} (${e.model}) completed at ${lineIds[lineIds.length - 1]}`, entity: `linerack:${e.rack}` })
+      out.push({ t: e.t, type: 'RACK_COMPLETED', text: `${rackId(e.rack)} (${e.model}) completed at ${stationLabel(lineIds[lineIds.length - 1])}`, entity: `linerack:${e.rack}` })
     } else if (e.kind === 'pou' && e.consumed > 0) {
       const [st, pn] = e.key.split(':')
-      out.push({ t: e.t, type: 'MATERIAL_CONSUMED', text: `${st} fitted ${e.consumed} × ${desc(pn)} (${e.pieces} left)`, entity: `pou:${st}:${pn}` })
+      out.push({ t: e.t, type: 'MATERIAL_CONSUMED', text: `${stationLabel(st)} fitted ${e.consumed} × ${desc(pn)} (${e.pieces} left)`, entity: `pou:${st}:${pn}` })
     } else if (e.kind === 'kstate') {
       const [pn, k] = e.slotId.split('#')
       const label = `${desc(pn)} Kanban #${Number(k) + 1}`

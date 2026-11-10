@@ -8,7 +8,10 @@ export interface KanbanPart {
   altPn?: string
   description: string
   models: Model[]
+  /** The sheet's workstation column: an assembly step (WS1 … WS10, SUBASSY), as written. */
   workstation: string | null
+  /** Physical line station that fits the part (ST1 … ST5, or SUBASSY), from line_stations. */
+  station: string | null
   qtyPerRack: number | null
   qtyPerPallet: number | null
   kanbanPallets: number
@@ -35,6 +38,23 @@ interface RawPart {
 
 const raw = extraction.kanban_parts.items as RawPart[]
 
+/** A physical station on the assembly line, as the user described it (names verified, step mapping estimated). */
+export interface LineStationDef { id: string; name: string; steps: string[]; confidence: Confidence; note?: string }
+export const LINE_STATION_DEFS: LineStationDef[] = extraction.line_stations.items.map((s) => ({
+  id: s.id, name: s.name, steps: s.steps, confidence: s.confidence as Confidence, note: 'note' in s ? s.note : undefined,
+}))
+
+/**
+ * Station for a sheet step ("WS3", "WS7 & WS8", "WS7/WS8", "SUBASSY"). Shared steps resolve to the
+ * first step's station. Sub-assembly stays its own area off the line.
+ */
+export function stationOfStep(step: string | null): string | null {
+  if (!step) return null
+  const first = step.split(/[&/]/)[0].trim()
+  if (first === 'SUBASSY') return 'SUBASSY'
+  return LINE_STATION_DEFS.find((s) => s.steps.includes(first))?.id ?? null
+}
+
 // Rows without a part number cannot be stocked or tracked, so they stay in the JSON only.
 export const KANBAN_PARTS: KanbanPart[] = raw
   .filter((p): p is RawPart & { pn: string } => p.pn !== null)
@@ -44,6 +64,7 @@ export const KANBAN_PARTS: KanbanPart[] = raw
     description: p.description,
     models: p.models as Model[],
     workstation: p.workstation,
+    station: stationOfStep(p.workstation),
     qtyPerRack: p.qty_per_rack,
     qtyPerPallet: p.qty_per_pallet,
     kanbanPallets: p.kanban_pallets,

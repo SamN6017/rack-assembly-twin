@@ -20,20 +20,23 @@ export function RightPanel() {
         <Row label="Pallets in Kanban area" value={kanbanPallets} confidence="verified" />
         <Row label="POU pallets" value={pouPallets} confidence="verified" />
         <Row label="Kanban area" value={`${(area.maxX - area.minX).toFixed(0)} × ${(area.maxZ - area.minZ).toFixed(1)} m`} confidence="estimated" />
-        <Row label="Stations" value={`${LAYOUT.stations.length - 1} + sub-assy`} confidence="verified" />
+        <Row label="Line stations" value={`${LAYOUT.stations.length - 1} + sub-assy`} confidence="verified" />
       </Section>
 
       <Section title="Rack build-up along the line">
         <ol className="space-y-1.5">
-          {INSTALL_SEQUENCE.map((s) => (
-            <li key={s.station} className="flex gap-2 text-[12px] leading-snug">
-              <span className="w-9 shrink-0 font-mono text-sky-300">{s.station}</span>
-              <span className={s.station === 'WS6' ? 'text-neutral-500' : 'text-neutral-300'}>{s.items}</span>
-            </li>
-          ))}
+          {INSTALL_SEQUENCE.map((s, i) => {
+            const st = LAYOUT.stations.find((x) => x.id === s.station)!
+            return (
+              <li key={s.station} className="text-[12px] leading-snug">
+                <div className="flex justify-between gap-2"><span className="text-sky-300">{i + 1} · {st.name}</span><span className="font-mono text-[10px] text-neutral-500">{st.steps.join(' ') || 'no sheet steps'}</span></div>
+                <div className={st.steps.length ? 'text-neutral-300' : 'text-neutral-500'}>{s.items}</div>
+              </li>
+            )
+          })}
         </ol>
         <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
-          Quantities per rack are from the BOM. Where each item sits inside the rack is illustrative.
+          Five stations as described by the line team; which sheet steps (WS…) each one does is inferred from the parts (estimated). Quantities per rack are from the BOM. Where each item sits inside the rack is illustrative.
         </p>
       </Section>
 

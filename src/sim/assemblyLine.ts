@@ -1,7 +1,6 @@
 import { getPart, KANBAN_PARTS, type Model } from '../data/parts'
 import { LAYOUT, type Vec2 } from '../layout/factoryLayout'
-import { LINE } from '../layout/constants'
-import { rackId, type MovementResult } from './movementSim'
+import { rackId, STOP_DISTANCES, SUBASSY_FEEDS, type MovementResult } from './movementSim'
 import { buildPath, distanceAt, makeProfile, pointAt, type Path, type Profile } from './path'
 
 /**
@@ -11,7 +10,7 @@ import { buildPath, distanceAt, makeProfile, pointAt, type Path, type Profile } 
  * and the 3D view, panels and tests all read the same answer.
  *
  * Timing (see movementSim): line index j starts at indexTimes[j]. Every rack then rides the
- * conveyor to its next station (transferS), assembles for the rest of the takt (assemblyS), and
+ * conveyor to its next station (transferS, set by the longest move), assembles for the rest of the takt (assemblyS), and
  * waits if the next index is late (the line is stopped for material).
  */
 
@@ -20,13 +19,13 @@ export const N_STATIONS = LINE_STATIONS.length
 export const WORKERS_PER_STATION = 2
 
 export type RackState =
-  | 'CREATED' | 'WAITING_FOR_WS1' | 'MOVING_TO_STATION' | 'AT_STATION' | 'ASSEMBLING' | 'ASSEMBLY_COMPLETE'
-  | 'WAITING_FOR_TRANSFER' | 'MOVING_TO_NEXT_STATION' | 'WS8_COMPLETE' | 'MOVING_TO_FINISHED_STAGING' | 'COMPLETED'
+  | 'CREATED' | 'WAITING_FOR_LOAD' | 'MOVING_TO_STATION' | 'AT_STATION' | 'ASSEMBLING' | 'ASSEMBLY_COMPLETE'
+  | 'WAITING_FOR_TRANSFER' | 'MOVING_TO_NEXT_STATION' | 'PACKOUT_COMPLETE' | 'MOVING_TO_FINISHED_STAGING' | 'COMPLETED'
 
 export const RACK_STATE_LABEL: Record<RackState, string> = {
-  CREATED: 'Created', WAITING_FOR_WS1: 'Loading at WS1', MOVING_TO_STATION: 'Moving to station', AT_STATION: 'At station',
+  CREATED: 'Created', WAITING_FOR_LOAD: 'Loading at station 1', MOVING_TO_STATION: 'Moving to station', AT_STATION: 'At station',
   ASSEMBLING: 'Assembling', ASSEMBLY_COMPLETE: 'Assembly complete', WAITING_FOR_TRANSFER: 'Waiting for transfer',
-  MOVING_TO_NEXT_STATION: 'Moving to next station', WS8_COMPLETE: 'WS8 complete', MOVING_TO_FINISHED_STAGING: 'To finished staging',
+  MOVING_TO_NEXT_STATION: 'Moving to next station', PACKOUT_COMPLETE: 'Packout complete', MOVING_TO_FINISHED_STAGING: 'To finished staging',
   COMPLETED: 'Completed',
 }
 
@@ -35,9 +34,9 @@ export interface RackView {
   id: string
   model: Model
   state: RackState
-  /** Line station index (0 = WS1) the rack is at or moving into; null once it has left WS8. */
+  /** Line station index (0 = station 1) the rack is at or moving into; null once it has left packout. */
   station: number | null
-  /** Stations whose work is finished on this rack (0–8). */
+  /** Stations whose work is finished on this rack (0 … N_STATIONS). */
   stationsDone: number
   /** Overall progress 0–1: finished stations plus the share of the current assembly window. */
   progress: number
@@ -48,7 +47,7 @@ export interface RackView {
   since: number
   /** When it started moving into its current station (null off the line). */
   atStationSince: number | null
-  /** When it was loaded at WS1; null for racks already on the line when the shift started. */
+  /** When it was loaded at station 1; null for racks already on the line when the shift started. */
   createdAt: number | null
   completedAt: number | null
 }
@@ -67,15 +66,16 @@ export function lineIndexAt(result: MovementResult, t: number): number {
 
 const modelOf = (result: MovementResult, rack: number) => result.rackModels[rack - result.firstRack]
 
-/** When rack r entered station k (k = 8: left WS8 for staging), or undefined if not (yet). */
+/** When rack r entered station k (k = N_STATIONS: left packout for staging), or undefined if not (yet). */
 const entry = (result: MovementResult, rack: number, k: number): number | undefined =>
   rack + k >= 0 ? result.indexTimes[rack + k] : undefined
 
+const LONGEST_MOVE = Math.max(...STOP_DISTANCES)
 const transferCache = new WeakMap<MovementResult, Profile>()
 function transferProfile(result: MovementResult): Profile {
   let p = transferCache.get(result)
   if (!p) {
-    p = makeProfile(LINE.stationPitch, result.config.conveyorSpeed, result.config.conveyorAccel)
+    p = makeProfile(LONGEST_MOVE, result.config.conveyorSpeed, result.config.conveyorAccel)
     transferCache.set(result, p)
   }
   return p
@@ -86,7 +86,7 @@ export const stagingSpot = (n: number) => LAYOUT.finishedRackSpots[((n % LAYOUT.
 
 interface Outfeed { path: Path; profile: Profile; tableStart: number; tableEnd: number }
 const outfeedCache = new Map<string, Outfeed>()
-/** WS8 → conveyor → lowering table → floor lane → staging spot, with its speed profile. */
+/** Packout → conveyor → lowering table → floor lane → staging spot, with its speed profile. */
 export function outfeedFor(result: MovementResult, spot: Vec2): Outfeed {
   const key = `${spot.x},${spot.z},${result.config.outfeedSpeed},${result.config.conveyorAccel}`
   let o = outfeedCache.get(key)
@@ -154,8 +154,8 @@ export function rackAt(result: MovementResult, rack: number, t: number): RackVie
   const progress = (k + (dt >= T ? 1 : assembling ? (dt - tau) / (T - tau) : 0)) / N_STATIONS
   let x = stops[k].x, z = stops[k].z, state: RackState, since: number
   if (dt < tau) {
-    // Same timing for every carrier, so racks that move together keep their spacing.
-    const f = distanceAt(transferProfile(result), dt) / LINE.stationPitch
+    // Every carrier starts and stops together (walking beam); a shorter move runs proportionally slower.
+    const f = distanceAt(transferProfile(result), dt) / LONGEST_MOVE
     const from = k === 0 ? LAYOUT.conveyor.load : stops[k - 1]
     x = from.x + (stops[k].x - from.x) * f
     z = from.z + (stops[k].z - from.z) * f
@@ -165,14 +165,14 @@ export function rackAt(result: MovementResult, rack: number, t: number): RackVie
     state = 'ASSEMBLING'
     since = e + tau
   } else {
-    state = k === N_STATIONS - 1 ? 'WS8_COMPLETE' : 'WAITING_FOR_TRANSFER'
+    state = k === N_STATIONS - 1 ? 'PACKOUT_COMPLETE' : 'WAITING_FOR_TRANSFER'
     since = e + T
   }
   return { ...base, completedAt: k === N_STATIONS - 1 && dt >= T ? e + T : null, state, station: k, stationsDone: done, progress, x, y: bed, z, since, atStationSince: e }
 }
 
 /**
- * Every rack worth drawing at t: the eight on the line, any on the outfeed, and the most recent
+ * Every rack worth drawing at t: the ones on the line, any on the outfeed, and the most recent
  * completed racks that fit in staging (older ones have shipped).
  */
 export function racksAt(result: MovementResult, t: number): RackView[] {
@@ -217,7 +217,7 @@ export function stationAt(result: MovementResult, k: number, t: number): Station
   const empty: StationView = { station: k, id, rack: null, state: 'empty', progress: 0, remaining: null, short: [] }
   if (!rack || rack.station !== k) return empty
   const stop = blockAt(result, t)
-  const short = stop ? stop.keys.filter((key) => key.startsWith(`${id}:`) || (id === 'WS4' && key.startsWith('SUBASSY:'))) : []
+  const short = stop ? stop.keys.filter((key) => key.startsWith(`${id}:`) || (id === SUBASSY_FEEDS && key.startsWith('SUBASSY:'))) : []
   const dt = t - (result.indexTimes[j] ?? 0)
   if (rack.state === 'ASSEMBLING') {
     return { station: k, id, rack, state: 'assembling', progress: (dt - result.transferS) / result.assemblyS, remaining: result.takt - dt, short }
@@ -231,8 +231,7 @@ export function stationAt(result: MovementResult, k: number, t: number): Station
 /** BOM lines a station fits to a rack of this model (tracked or not), from the sheet. */
 export function stationParts(stationId: string, model: Model) {
   return KANBAN_PARTS.filter((p) => {
-    const ws = p.workstation?.split('&')[0].trim()
-    const at = ws === 'SUBASSY' ? 'WS4' : ws
+    const at = p.station === 'SUBASSY' ? SUBASSY_FEEDS : p.station
     return at === stationId && p.models.includes(model)
   })
 }
